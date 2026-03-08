@@ -1,0 +1,426 @@
+﻿.selector-list--collection .selector-copy {
+  gap: 3px;
+}
+
+.selector-copy small {
+  color: #607764;
+  font-size: 0.78rem;
+}
+
+.breeding-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.collection-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.collection-stats article {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(223, 239, 216, 0.92));
+}
+
+.collection-stats strong {
+  font-size: 1.4rem;
+  color: #294933;
+}
+
+.collection-stats span {
+  color: #57715b;
+}
+
+.breeding-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.breeding-field {
+  display: grid;
+  gap: 8px;
+  color: #35513a;
+  font-weight: 700;
+}
+
+.breeding-select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(79, 117, 84, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.74);
+  color: #28422d;
+}
+
+.breeding-button,
+.egg-card__button {
+  border: 0;
+  border-radius: 16px;
+  padding: 13px 16px;
+  background: linear-gradient(180deg, #f7f0c8, #e6d67d);
+  color: #4b4a24;
+  font-weight: 700;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.breeding-button:hover:not(:disabled),
+.egg-card__button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(108, 102, 51, 0.18);
+}
+
+.breeding-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  box-shadow: none;
+}
+
+.breeding-pair-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.breeding-pair-summary span {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(95, 143, 97, 0.12);
+  color: #325239;
+  font-size: 0.86rem;
+}
+
+.breeding-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.breeding-balance-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(223, 239, 216, 0.88));
+  border: 1px solid rgba(78, 114, 81, 0.12);
+}
+
+.breeding-balance-card strong {
+  font-size: 1.35rem;
+  color: #294933;
+}
+
+.breeding-balance-card span {
+  color: #4b6650;
+  font-weight: 700;
+}
+
+.breeding-balance-card small {
+  color: #607764;
+  line-height: 1.45;
+}
+
+.egg-list {
+  display: grid;
+  gap: 12px;
+}
+
+.egg-empty {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.54);
+  color: #4a654f;
+}
+
+.egg-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(78, 114, 81, 0.14);
+  background: rgba(255, 255, 255, 0.56);
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+}
+
+.egg-card--fresh {
+  border-color: rgba(176, 205, 160, 0.32);
+}
+
+.egg-card--resting {
+  border-color: rgba(78, 114, 81, 0.14);
+}
+
+.egg-card--stirring {
+  border-color: rgba(134, 176, 122, 0.24);
+  animation: eggCardStir 2.6s ease-in-out infinite;
+}
+
+.egg-card--cracking {
+  border-color: rgba(194, 165, 107, 0.34);
+  box-shadow: 0 12px 24px rgba(188, 167, 96, 0.1);
+  animation: eggCardCrack 0.9s ease-in-out infinite;
+}
+
+.egg-card--ready {
+  border-color: rgba(209, 176, 72, 0.34);
+  box-shadow: 0 12px 24px rgba(209, 176, 72, 0.12);
+}
+
+.egg-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.egg-card__title {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.egg-card__header strong {
+  display: block;
+  color: #26422c;
+}
+
+.egg-card__header span {
+  color: #5b715d;
+  font-size: 0.9rem;
+}
+
+.egg-card__swatch {
+  width: 18px;
+  height: 54px;
+  border-radius: 999px;
+  flex: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.54);
+}
+
+.egg-card__swatch--fresh {
+  animation: eggSwatchGlow 2.4s ease-in-out infinite;
+}
+
+.egg-card__swatch--stirring {
+  animation: eggSwatchStir 1.8s ease-in-out infinite;
+}
+
+.egg-card__swatch--cracking,
+.egg-card__swatch--ready {
+  animation: eggSwatchFlash 0.95s ease-in-out infinite;
+}
+
+.egg-card__stage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.egg-card__stage--fresh {
+  background: rgba(179, 216, 162, 0.2);
+  color: #52724d;
+}
+
+.egg-card__stage--resting {
+  background: rgba(95, 143, 97, 0.12);
+  color: #426347;
+}
+
+.egg-card__stage--stirring {
+  background: rgba(173, 205, 125, 0.22);
+  color: #557043;
+}
+
+.egg-card__stage--cracking {
+  background: rgba(229, 208, 141, 0.24);
+  color: #766439;
+}
+
+.egg-card__stage--ready {
+  background: rgba(234, 213, 128, 0.34);
+  color: #6f5b22;
+}
+
+.egg-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.egg-card__meta span {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(95, 143, 97, 0.12);
+  color: #325239;
+  font-size: 0.82rem;
+}
+
+.egg-card__progress {
+  position: relative;
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(111, 146, 113, 0.14);
+}
+
+.egg-card__progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #bed7a8, #7fb06e);
+  transition: width 0.35s ease;
+}
+
+.egg-card__progress-fill--stirring {
+  background: linear-gradient(90deg, #c9dd9d, #8eb75d);
+}
+
+.egg-card__progress-fill--cracking {
+  background: linear-gradient(90deg, #e3cf85, #c39f4b);
+}
+
+.egg-card__progress-fill--ready {
+  background: linear-gradient(90deg, #f3e19b, #d4aa48);
+}
+
+.egg-card__progress-copy {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.egg-card__progress-copy span {
+  color: #5d725f;
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.egg-card__progress-copy strong {
+  color: #325239;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+@keyframes eggCardStir {
+  0%, 100% { transform: translateX(0); }
+  35% { transform: translateX(-1px); }
+  70% { transform: translateX(1px); }
+}
+
+@keyframes eggCardCrack {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  25% { transform: translateX(-1px) rotate(-0.4deg); }
+  55% { transform: translateX(1px) rotate(0.45deg); }
+}
+
+@keyframes eggSwatchGlow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.12); }
+}
+
+@keyframes eggSwatchStir {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes eggSwatchFlash {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.2); }
+}
+@media (max-width: 1024px) {
+  .breeding-grid,
+  .breeding-balance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .collection-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .collection-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .collection-stats,
+  .breeding-balance-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.selector-list--collection .selector-copy small + small {
+  margin-top: -1px;
+}
+
+.breeding-pair-summary span {
+  align-items: flex-start;
+  line-height: 1.45;
+}
+
+.egg-card__swatch {
+  --egg-accent: #dcebd1;
+  --egg-pattern-tone: rgba(104, 124, 96, 0.22);
+  --egg-pattern-angle: 58deg;
+  --egg-crack-angle: -12deg;
+  --egg-crack-tone: rgba(104, 124, 96, 0.54);
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 34% 22%, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.82) 28%, transparent 28%),
+    linear-gradient(138deg, rgba(255, 255, 255, 0.16), transparent 62%),
+    var(--egg-accent);
+}
+
+.egg-card__swatch::before,
+.egg-card__swatch::after {
+  content: '';
+  position: absolute;
+}
+
+.egg-card__swatch::before {
+  inset: 10px 5px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(
+    var(--egg-pattern-angle),
+    transparent 0 4px,
+    var(--egg-pattern-tone) 4px 6px,
+    transparent 6px 10px
+  );
+  opacity: 0.34;
+}
+
+.egg-card__swatch::after {
+  inset: 9px 7px;
+  border-radius: 999px;
+  background: linear-gradient(
+    var(--egg-crack-angle),
+    transparent 44%,
+    var(--egg-crack-tone) 44%,
+    var(--egg-crack-tone) 49%,
+    transparent 49%
+  );
+  opacity: 0.16;
+}
+
+.egg-card__swatch--cracking::after,
+.egg-card__swatch--ready::after {
+  opacity: 0.52;
+}
