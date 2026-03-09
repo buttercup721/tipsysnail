@@ -1212,24 +1212,29 @@ function App() {
           })}
         </div>
 
-        {interactionMode === 'breed' ? (
-          <section className="mode-overlay mode-overlay--breed" onClick={(event) => event.stopPropagation()}>
-            <div className="mode-overlay__names">
-              <span>{selectedSnails[0]?.name ?? '첫 번째 달팽이'}</span>
-              <span>{selectedSnails[1]?.name ?? '두 번째 달팽이'}</span>
-            </div>
-            <div className="mode-overlay__hint">
-              {breedingPreview
-                ? `레어 ${Math.round(breedingPreview.rareChance * 100)}% · 부화 ${formatShortDuration(breedingPreview.hatchDurationMs)}`
-                : breedingRequirementText ?? '두 마리를 고르면 바로 교배할 수 있어요.'}
-            </div>
-            <div className="mode-overlay__actions">
-              <button type="button" className="action-button action-button--ghost" onClick={() => resetModes('교배 선택을 취소했어요.')}>취소</button>
-              <button type="button" className="action-button" onClick={handleBreedSelected} disabled={Boolean(breedingRequirementText)}>교배 시작</button>
-            </div>
-          </section>
-        ) : null}
       </main>
+
+      {interactionMode === 'breed' ? (
+        <section className="breed-tray" onClick={(event) => event.stopPropagation()}>
+          <div className="breed-tray__head">
+            <strong>교배 조합</strong>
+            <button type="button" className="breed-tray__close" onClick={() => resetModes('교배 선택을 취소했어요.')}>닫기</button>
+          </div>
+          <div className="breed-tray__names">
+            <span>{selectedSnails[0]?.name ?? '첫 번째 달팽이'}</span>
+            <span>{selectedSnails[1]?.name ?? '두 번째 달팽이'}</span>
+          </div>
+          <div className="breed-tray__hint">
+            {breedingPreview
+              ? `레어 ${Math.round(breedingPreview.rareChance * 100)}% · 부화 ${formatShortDuration(breedingPreview.hatchDurationMs)}`
+              : breedingRequirementText ?? '두 마리를 고르면 바로 교배할 수 있어요.'}
+          </div>
+          <div className="breed-tray__actions">
+            <button type="button" className="action-button action-button--ghost" onClick={() => resetModes('교배 선택을 취소했어요.')}>취소</button>
+            <button type="button" className="action-button" onClick={handleBreedSelected} disabled={Boolean(breedingRequirementText)}>교배 시작</button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="control-ribbon">
         <div className="supply-rack">
@@ -1253,11 +1258,34 @@ function App() {
           })}
         </div>
 
-        <div className="mode-rack">
-          <button type="button" className={interactionMode === 'breed' ? 'is-active' : ''} onClick={handleToggleBreedMode}>교배</button>
-          <button type="button" className={interactionMode === 'sell' ? 'is-active' : ''} onClick={handleToggleSellMode}>판매</button>
-          <button type="button" onClick={handleSaveGame}>세이브</button>
-          <button type="button" onClick={handleLoadGame}>불러오기</button>
+        <div className="control-groups">
+          <article className={`mode-cluster mode-cluster--action ${interactionMode !== 'observe' ? 'is-highlighted' : ''}`}>
+            <div className="mode-cluster__head">
+              <strong>행동</strong>
+              <span>
+                {interactionMode === 'breed'
+                  ? '두 마리 선택 중'
+                  : interactionMode === 'sell'
+                    ? '판매 대상 고르는 중'
+                    : '교배와 판매'}
+              </span>
+            </div>
+            <div className="mode-rack mode-rack--action">
+              <button type="button" className={interactionMode === "breed" ? "is-active" : ""} onClick={handleToggleBreedMode}>교배</button>
+              <button type="button" className={interactionMode === "sell" ? "is-active" : ""} onClick={handleToggleSellMode}>판매</button>
+            </div>
+          </article>
+
+          <article className="mode-cluster mode-cluster--save">
+            <div className="mode-cluster__head">
+              <strong>보관</strong>
+              <span>{manualSaveInfo ? `최근 ${formatSavedAt(manualSaveInfo.savedAt)}` : '원하는 시점 저장'}</span>
+            </div>
+            <div className="mode-rack mode-rack--save">
+              <button type="button" onClick={handleSaveGame}>세이브</button>
+              <button type="button" onClick={handleLoadGame}>불러오기</button>
+            </div>
+          </article>
         </div>
       </section>
 
