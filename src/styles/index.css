@@ -2336,6 +2336,12 @@ img {
   margin-top: 22px;
 }
 
+.support-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.92fr) minmax(0, 1.08fr);
+  gap: 18px;
+}
+
 .terrarium-panel--simple {
   display: grid;
   gap: 18px;
@@ -2365,6 +2371,7 @@ img {
 }
 
 .action-dock--simple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 0;
 }
 
@@ -2896,7 +2903,8 @@ img {
 
 @media (max-width: 1024px) {
   .hero-panel--compact,
-  .focus-row {
+  .focus-row,
+  .support-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -2973,5 +2981,7 @@ img {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
 
 

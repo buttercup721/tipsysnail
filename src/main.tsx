@@ -1,9 +1,8 @@
-﻿import React from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import './styles/index.css';
-import './styles/edit-mode.css';
 import './styles/breeding-loop.css';
 
 registerSW({ immediate: true });
@@ -13,3 +12,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>
 );
+
+
+

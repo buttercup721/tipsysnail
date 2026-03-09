@@ -1,23 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import PropVisual from './components/PropVisual';
-import {
-  createStarterPlacedPropsByTerrarium,
-  mainActions,
-  snailSpecies,
-  starterTerrariums,
-  terrariumProps
-} from './data/gameContent';
-import type {
-  ActionId,
-  BreedingSelection,
-  OwnedSnail,
-  PlacedTerrariumProp,
-  PropPlacementMode,
-  SnailEgg,
-  SnailSpecies,
-  StoredGameState,
-  TerrariumPropDefinition
-} from './types/game';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { mainActions, snailSpecies, starterTerrariums } from './data/gameContent';
+import type { ActionId, BreedingSelection, OwnedSnail, SnailEgg, SnailSpecies, StoredGameState } from './types/game';
 import {
   createEggFromParents,
   createStarterSnailCollection,
@@ -33,9 +16,7 @@ const fallbackSpecies = snailSpecies[0]!;
 const fallbackTerrarium = starterTerrariums[0]!;
 const motionPhases = ['forage', 'glide', 'glassy-climb', 'window-perch'] as const;
 const rainStreakIds = [1, 2, 3, 4, 5, 6] as const;
-const starterPlacedProps = createStarterPlacedPropsByTerrarium();
 const starterSnails = createStarterSnailCollection();
-const defaultPalettePropId = terrariumProps[0]?.id ?? null;
 const fallbackOwnedSnail = starterSnails[0]!;
 const defaultBreedingSelection: BreedingSelection = {
   parentAId: starterSnails[0]?.id ?? null,
@@ -43,11 +24,6 @@ const defaultBreedingSelection: BreedingSelection = {
 };
 
 type MotionPhase = (typeof motionPhases)[number];
-
-type PlacementPoint = {
-  x: number;
-  y: number;
-};
 
 type SceneEffect =
   | {
@@ -135,41 +111,8 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-function clonePlacedPropsMap(
-  source: Record<string, PlacedTerrariumProp[]>
-): Record<string, PlacedTerrariumProp[]> {
-  return Object.fromEntries(
-    Object.entries(source).map(([terrariumId, placements]) => [
-      terrariumId,
-      placements.map((placement) => ({ ...placement }))
-    ])
-  );
-}
-
 function cloneSnails(snails: OwnedSnail[]): OwnedSnail[] {
   return snails.map((snail) => ({ ...snail }));
-}
-
-function sanitizePlacement(candidate: unknown, fallbackId: string): PlacedTerrariumProp | null {
-  if (!candidate || typeof candidate !== 'object') {
-    return null;
-  }
-
-  const maybePlacement = candidate as Partial<PlacedTerrariumProp>;
-  if (
-    typeof maybePlacement.propId !== 'string' ||
-    typeof maybePlacement.x !== 'number' ||
-    typeof maybePlacement.y !== 'number'
-  ) {
-    return null;
-  }
-
-  return {
-    id: typeof maybePlacement.id === 'string' ? maybePlacement.id : fallbackId,
-    propId: maybePlacement.propId,
-    x: clamp(maybePlacement.x, 6, 94),
-    y: clamp(maybePlacement.y, 8, 90)
-  };
 }
 
 function sanitizeOwnedSnail(
@@ -250,32 +193,6 @@ function sanitizeEgg(
   };
 }
 
-function normalizePlacedPropsByTerrarium(storedPlacements: unknown): Record<string, PlacedTerrariumProp[]> {
-  const normalizedPlacements = clonePlacedPropsMap(starterPlacedProps);
-
-  if (!storedPlacements || typeof storedPlacements !== 'object') {
-    return normalizedPlacements;
-  }
-
-  const storedRecord = storedPlacements as Record<string, unknown>;
-  for (const terrarium of starterTerrariums) {
-    if (!Object.prototype.hasOwnProperty.call(storedRecord, terrarium.id)) {
-      continue;
-    }
-
-    const terrariumPlacements = storedRecord[terrarium.id];
-    if (!Array.isArray(terrariumPlacements)) {
-      continue;
-    }
-
-    normalizedPlacements[terrarium.id] = terrariumPlacements
-      .map((placement, index) => sanitizePlacement(placement, `${terrarium.id}-restored-${index}`))
-      .filter((placement): placement is PlacedTerrariumProp => placement !== null);
-  }
-
-  return normalizedPlacements;
-}
-
 function normalizeOwnedSnails(
   storedSnails: unknown,
   speciesLookup: Record<string, SnailSpecies>
@@ -335,28 +252,6 @@ function normalizeBreedingSelection(
   };
 }
 
-function clampPlacementPoint(point: PlacementPoint, placementMode: PropPlacementMode): PlacementPoint {
-  const x = clamp(point.x, 8, 92);
-
-  if (placementMode === 'ceiling') {
-    return { x, y: clamp(point.y, 12, 42) };
-  }
-
-  if (placementMode === 'free') {
-    return { x, y: clamp(point.y, 18, 80) };
-  }
-
-  return { x, y: clamp(point.y, 56, 86) };
-}
-
-function createPlacementId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-
-  return `prop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 function getCooldownRemaining(snail: OwnedSnail | null, now: number): number {
   return snail ? Math.max(0, snail.cooldownUntil - now) : 0;
 }
@@ -414,33 +309,21 @@ function App() {
     () => Object.fromEntries(snailSpecies.map((species) => [species.id, species])) as Record<string, SnailSpecies>,
     []
   );
-  const propLookup = useMemo(
-    () => Object.fromEntries(terrariumProps.map((prop) => [prop.id, prop])) as Record<string, TerrariumPropDefinition>,
-    []
-  );
 
   const [selectedSnailId, setSelectedSnailId] = useState(fallbackOwnedSnail.id);
   const [selectedTerrariumId, setSelectedTerrariumId] = useState(fallbackTerrarium.id);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [statusMessage, setStatusMessage] = useState(
-    '달팽이가 이끼 위를 천천히 지나가며 반짝이는 점액 자국을 남기고 있어요.'
+    '먹이, 터치, 교배만 남기고 화면을 단순화했어요. 먼저 달팽이 한 마리를 골라 천천히 관찰해보세요.'
   );
   const [activeAction, setActiveAction] = useState<ActionId | null>(null);
   const [motionPhaseIndex, setMotionPhaseIndex] = useState(0);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
-  const [selectedPalettePropId, setSelectedPalettePropId] = useState<string | null>(defaultPalettePropId);
-  const [placedPropsByTerrarium, setPlacedPropsByTerrarium] = useState<Record<string, PlacedTerrariumProp[]>>(
-    () => clonePlacedPropsMap(starterPlacedProps)
-  );
-  const [selectedPlacedPropId, setSelectedPlacedPropId] = useState<string | null>(null);
-  const [draggedPropId, setDraggedPropId] = useState<string | null>(null);
   const [ownedSnails, setOwnedSnails] = useState<OwnedSnail[]>(() => cloneSnails(starterSnails));
   const [eggs, setEggs] = useState<SnailEgg[]>([]);
   const [breedingSelection, setBreedingSelection] = useState<BreedingSelection>(defaultBreedingSelection);
   const [sceneEffect, setSceneEffect] = useState<SceneEffect>(null);
 
-  const sceneRef = useRef<HTMLDivElement | null>(null);
   const lastSceneSoundKeyRef = useRef('');
 
   useEffect(() => {
@@ -452,7 +335,6 @@ function App() {
     setOwnedSnails(normalizedSnails);
     setEggs(normalizeEggs(storedState?.eggs, terrariumIds, ownedSnailIds, speciesLookup));
     setBreedingSelection(normalizeBreedingSelection(storedState?.breedingSelection, normalizedSnails));
-    setPlacedPropsByTerrarium(normalizePlacedPropsByTerrarium(storedState?.placedPropsByTerrarium));
 
     if (
       typeof storedState?.selectedSnailId === 'string' &&
@@ -467,16 +349,8 @@ function App() {
       setSelectedTerrariumId(storedState.selectedTerrariumId);
     }
 
-    if (typeof storedState?.isEditMode === 'boolean') {
-      setIsEditMode(storedState.isEditMode);
-    }
-
     if (typeof storedState?.statusMessage === 'string') {
       setStatusMessage(storedState.statusMessage);
-    }
-
-    if (storedState?.selectedPalettePropId === null || typeof storedState?.selectedPalettePropId === 'string') {
-      setSelectedPalettePropId(storedState.selectedPalettePropId ?? defaultPalettePropId);
     }
 
     setHasHydrated(true);
@@ -490,28 +364,14 @@ function App() {
     const nextState: StoredGameState = {
       selectedSnailId,
       selectedTerrariumId,
-      isEditMode,
       statusMessage,
-      selectedPalettePropId,
-      placedPropsByTerrarium,
       ownedSnails,
       eggs,
       breedingSelection
     };
 
     saveStoredGameState(nextState);
-  }, [
-    breedingSelection,
-    eggs,
-    hasHydrated,
-    isEditMode,
-    ownedSnails,
-    placedPropsByTerrarium,
-    selectedPalettePropId,
-    selectedSnailId,
-    selectedTerrariumId,
-    statusMessage
-  ]);
+  }, [breedingSelection, eggs, hasHydrated, ownedSnails, selectedSnailId, selectedTerrariumId, statusMessage]);
 
   useEffect(() => {
     const motionIntervalId = window.setInterval(() => {
@@ -562,7 +422,6 @@ function App() {
 
     return () => window.clearTimeout(timeoutId);
   }, [sceneEffect]);
-
   useEffect(() => {
     if (!ownedSnails.some((snail) => snail.id === selectedSnailId)) {
       setSelectedSnailId(ownedSnails[0]?.id ?? fallbackOwnedSnail.id);
@@ -583,18 +442,6 @@ function App() {
     }));
   }, [ownedSnails]);
 
-  useEffect(() => {
-    setSelectedPlacedPropId(null);
-    setDraggedPropId(null);
-  }, [selectedTerrariumId]);
-
-  useEffect(() => {
-    if (!isEditMode) {
-      setSelectedPlacedPropId(null);
-      setDraggedPropId(null);
-    }
-  }, [isEditMode]);
-
   const selectedSnail = ownedSnails.find((snail) => snail.id === selectedSnailId) ?? fallbackOwnedSnail;
   const selectedSnailIndex = Math.max(0, ownedSnails.findIndex((snail) => snail.id === selectedSnail.id));
   const selectedSnailSceneSlot = getSnailSceneSlot(selectedTerrariumId, selectedSnailIndex, motionPhaseIndex);
@@ -603,14 +450,6 @@ function App() {
   const selectedSnailGrowth = getGrowthProfile(selectedSnail, clockNow);
   const selectedTerrarium =
     starterTerrariums.find((terrarium) => terrarium.id === selectedTerrariumId) ?? fallbackTerrarium;
-  const selectedTerrariumPlacements = placedPropsByTerrarium[selectedTerrarium.id] ?? [];
-  const sortedTerrariumPlacements = [...selectedTerrariumPlacements].sort((left, right) => left.y - right.y);
-  const selectedPaletteProp = selectedPalettePropId ? propLookup[selectedPalettePropId] ?? null : null;
-  const selectedPlacedProp =
-    selectedPlacedPropId !== null
-      ? selectedTerrariumPlacements.find((placement) => placement.id === selectedPlacedPropId) ?? null
-      : null;
-  const selectedPlacedPropDefinition = selectedPlacedProp ? propLookup[selectedPlacedProp.propId] ?? null : null;
   const selectedTerrariumEggs = eggs.filter((egg) => egg.terrariumId === selectedTerrarium.id);
   const previewTerrariumEggs = selectedTerrariumEggs.slice(0, 4);
   const featuredTerrariumEgg = previewTerrariumEggs[0] ?? null;
@@ -658,39 +497,19 @@ function App() {
   const selectedGrowthNextText = selectedSnailGrowth.nextStageLabel
     ? `${selectedSnailGrowth.nextStageLabel}까지 ${formatEggCountdown(selectedSnailGrowth.nextStageRemainingMs)}`
     : '성장 완료 · 교배 가능';
-  const selectedGrowthStagePercent = Math.round(selectedSnailGrowth.stageProgress * 100);
   const selectedGrowthLifetimePercent = Math.round(selectedSnailGrowth.lifetimeProgress * 100);
   const selectedGrowthAdultText = selectedSnailGrowth.isMature
     ? '성장 완료 · 교배 가능'
     : `성체까지 ${formatEggCountdown(selectedSnailGrowth.adultRemainingMs)}`;
-  const selectedGrowthMetrics = [
-    {
-      label: '껍질 경화',
-      value: selectedSnailGrowth.shellHardness,
-      hint: '무른 가장자리가 단단한 껍질 고리로 자리잡는 정도'
-    },
-    {
-      label: '몸통 성장',
-      value: selectedSnailGrowth.muscleTone,
-      hint: '몸 길이와 벽 타기 안정감이 자라나는 정도'
-    },
-    {
-      label: '더듬이 감각',
-      value: selectedSnailGrowth.sensoryReach,
-      hint: '먹이와 환경 반응을 읽는 촉감 범위'
-    },
-    {
-      label: '점액 흔적',
-      value: selectedSnailGrowth.trailStrength,
-      hint: '이동 후 남는 점액 자국의 선명도'
-    }
-  ];
   const isLayingSceneActive = sceneEffect?.kind === 'laying' && sceneEffect.terrariumId === selectedTerrarium.id;
   const isHatchingSceneActive = sceneEffect?.kind === 'hatching' && sceneEffect.terrariumId === selectedTerrarium.id;
   const visibleSceneEffectAccent =
     sceneEffect && sceneEffect.terrariumId === selectedTerrarium.id ? sceneEffect.accent : '#eef6e9';
   const visibleSceneEffectLabel =
     sceneEffect && sceneEffect.terrariumId === selectedTerrarium.id ? sceneEffect.label : '';
+  const activeActionLabel = activeAction
+    ? mainActions.find((action) => action.id === activeAction)?.label ?? '반응'
+    : '느린 관찰 모드';
   const primarySceneMetric = isHatchingSceneActive
     ? '부화 연출 활성'
     : isLayingSceneActive
@@ -701,195 +520,30 @@ function App() {
           ? `알 상태 · ${featuredTerrariumEggStageLabel}`
           : motionPhaseLabels[motionPhase];
 
-  function getPointerPosition(
-    clientX: number,
-    clientY: number,
-    placementMode: PropPlacementMode
-  ): PlacementPoint | null {
-    if (!sceneRef.current) {
-      return null;
-    }
-
-    const sceneBounds = sceneRef.current.getBoundingClientRect();
-    const rawPoint = {
-      x: ((clientX - sceneBounds.left) / sceneBounds.width) * 100,
-      y: ((clientY - sceneBounds.top) / sceneBounds.height) * 100
-    };
-
-    return clampPlacementPoint(rawPoint, placementMode);
-  }
-
-  function updatePlacementPosition(
-    placementId: string,
-    propId: string,
-    clientX: number,
-    clientY: number
-  ) {
-    const definition = propLookup[propId];
-    if (!definition) {
-      return;
-    }
-
-    const nextPosition = getPointerPosition(clientX, clientY, definition.placementMode);
-    if (!nextPosition) {
-      return;
-    }
-
-    setPlacedPropsByTerrarium((currentPlacements) => ({
-      ...currentPlacements,
-      [selectedTerrarium.id]: (currentPlacements[selectedTerrarium.id] ?? []).map((placement) =>
-        placement.id === placementId ? { ...placement, ...nextPosition } : placement
-      )
-    }));
-  }
-
-  function handlePalettePropClick(propId: string) {
-    const definition = propLookup[propId];
-    if (!definition) {
-      return;
-    }
-
-    snailSounds.playSoftSelect();
-
-    if (!isEditMode) {
-      setStatusMessage('소품 배치는 편집 모드에서 진행돼요. 아래 편집 버튼을 눌러서 이어서 배치해보세요.');
-      return;
-    }
-
-    if (selectedPalettePropId === propId) {
-      setSelectedPalettePropId(null);
-      setStatusMessage('소품 선택을 해제했어요. 다른 소품을 고르거나 이미 놓은 소품을 움직일 수 있어요.');
-      return;
-    }
-
-    setSelectedPalettePropId(propId);
-    setSelectedPlacedPropId(null);
-    setStatusMessage(`${definition.name}을 선택했어요. 테라리움 빈 공간을 탭하면 바로 배치됩니다.`);
-  }
-
   function handleInterfacePointerDownCapture() {
     snailSounds.prime();
   }
 
-  function handleScenePointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (!isEditMode) {
-      return;
-    }
-
-    const target = event.target as HTMLElement;
-    if (target.closest('[data-placed-prop="true"]')) {
-      return;
-    }
-
-    if (!selectedPaletteProp) {
-      snailSounds.playBlocked();
-      setSelectedPlacedPropId(null);
-      setStatusMessage('먼저 아래 소품 라이브러리에서 배치할 소품을 골라주세요.');
-      return;
-    }
-
-    const nextPosition = getPointerPosition(
-      event.clientX,
-      event.clientY,
-      selectedPaletteProp.placementMode
-    );
-    if (!nextPosition) {
-      return;
-    }
-
-    const nextPlacement: PlacedTerrariumProp = {
-      id: createPlacementId(),
-      propId: selectedPaletteProp.id,
-      ...nextPosition
-    };
-
-    setPlacedPropsByTerrarium((currentPlacements) => ({
-      ...currentPlacements,
-      [selectedTerrarium.id]: [...(currentPlacements[selectedTerrarium.id] ?? []), nextPlacement]
-    }));
-    snailSounds.playPropSettle();
-    setSelectedPlacedPropId(nextPlacement.id);
-    setStatusMessage(`${selectedPaletteProp.name}을 ${selectedTerrarium.name}에 배치했어요. 드래그해서 위치를 다듬어보세요.`);
-  }
-
-  function handlePlacedPropPointerDown(
-    event: React.PointerEvent<HTMLButtonElement>,
-    placement: PlacedTerrariumProp
+  function describeBreedingParent(
+    slotLabel: string,
+    snail: OwnedSnail | null,
+    growth: GrowthProfile | null,
+    cooldownRemaining: number
   ) {
-    if (!isEditMode) {
-      return;
+    if (!snail || !growth) {
+      return `${slotLabel} 비어 있음`;
     }
 
-    event.stopPropagation();
-    event.preventDefault();
-    snailSounds.playPropGrab();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setSelectedPlacedPropId(placement.id);
-    setDraggedPropId(placement.id);
-    updatePlacementPosition(placement.id, placement.propId, event.clientX, event.clientY);
-
-    const definition = propLookup[placement.propId];
-    if (definition) {
-      setStatusMessage(`${definition.name} 위치를 조정하는 중이에요.`);
+    if (!growth.isMature) {
+      return `${slotLabel} ${snail.name} · ${growth.nextStageLabel ?? '성체'}까지 ${formatEggCountdown(growth.nextStageRemainingMs)}`;
     }
+
+    if (cooldownRemaining > 0) {
+      return `${slotLabel} ${snail.name} · 재교배 ${formatEggCountdown(cooldownRemaining)}`;
+    }
+
+    return `${slotLabel} ${snail.name} · 교배 가능`;
   }
-
-  function handlePlacedPropPointerMove(
-    event: React.PointerEvent<HTMLButtonElement>,
-    placement: PlacedTerrariumProp
-  ) {
-    if (!isEditMode || draggedPropId !== placement.id) {
-      return;
-    }
-
-    event.preventDefault();
-    updatePlacementPosition(placement.id, placement.propId, event.clientX, event.clientY);
-  }
-
-  function handlePlacedPropPointerUp(
-    event: React.PointerEvent<HTMLButtonElement>,
-    placement: PlacedTerrariumProp
-  ) {
-    if (draggedPropId !== placement.id) {
-      return;
-    }
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-
-    setDraggedPropId(null);
-    snailSounds.playPropSettle();
-    const definition = propLookup[placement.propId];
-    if (definition) {
-      setStatusMessage(`${definition.name} 위치를 저장했어요.`);
-    }
-  }
-
-  function handleDeleteSelectedProp() {
-    if (!selectedPlacedPropId) {
-      snailSounds.playBlocked();
-      setStatusMessage('삭제할 소품이 아직 선택되지 않았어요. 편집 모드에서 소품을 한 번 눌러주세요.');
-      return;
-    }
-
-    snailSounds.playPropRemove();
-    const deletedDefinition = selectedPlacedPropDefinition;
-    setPlacedPropsByTerrarium((currentPlacements) => ({
-      ...currentPlacements,
-      [selectedTerrarium.id]: (currentPlacements[selectedTerrarium.id] ?? []).filter(
-        (placement) => placement.id !== selectedPlacedPropId
-      )
-    }));
-    setSelectedPlacedPropId(null);
-    setDraggedPropId(null);
-    setStatusMessage(
-      deletedDefinition
-        ? `${deletedDefinition.name}을 ${selectedTerrarium.name}에서 정리했어요.`
-        : '선택한 소품을 정리했어요.'
-    );
-  }
-
   function handleBreedingSelectionChange(slot: 'parentAId' | 'parentBId', value: string) {
     snailSounds.playSoftSelect();
     setBreedingSelection((currentSelection) => ({
@@ -910,29 +564,29 @@ function App() {
     const terrarium = starterTerrariums.find((candidate) => candidate.id === terrariumId) ?? fallbackTerrarium;
     snailSounds.playSoftSelect();
     setSelectedTerrariumId(terrariumId);
-    setStatusMessage(`${terrarium.name}로 시점을 옮겼어요. 지금 공간 안에서 보유한 달팽이들이 함께 움직입니다.`);
+    setStatusMessage(`${terrarium.name}로 시점을 옮겼어요. 먹이, 터치, 교배 반응이 이 공간 기준으로 이어집니다.`);
   }
 
   function handleBreedRequest() {
     if (!breedingParentA || !breedingParentB) {
       snailSounds.playBlocked();
-      setStatusMessage('브리딩 랩에서 부모 A와 부모 B를 먼저 선택해주세요.');
+      setStatusMessage('교배 카드에서 부모 A와 부모 B를 먼저 선택해주세요.');
       return;
     }
 
     if (breedingParentA.id === breedingParentB.id) {
       snailSounds.playBlocked();
-      setStatusMessage('같은 달팽이를 부모 A와 B에 동시에 넣을 수는 없어요. 다른 짝을 골라주세요.');
+      setStatusMessage('같은 달팽이를 두 부모로 동시에 넣을 수는 없어요. 다른 짝을 골라주세요.');
       return;
     }
 
     if (breedingMaturityBlocked) {
       const growthNotes = [
         breedingParentAGrowth && !breedingParentAGrowth.isMature
-          ? `${breedingParentA.name} ${breedingParentAGrowth.label} · ${breedingParentAGrowth.nextStageLabel ?? '성체'}까지 ${formatEggCountdown(breedingParentAGrowth.nextStageRemainingMs)}`
+          ? `${breedingParentA.name} ${breedingParentAGrowth.nextStageLabel ?? '성체'}까지 ${formatEggCountdown(breedingParentAGrowth.nextStageRemainingMs)}`
           : null,
         breedingParentBGrowth && !breedingParentBGrowth.isMature
-          ? `${breedingParentB.name} ${breedingParentBGrowth.label} · ${breedingParentBGrowth.nextStageLabel ?? '성체'}까지 ${formatEggCountdown(breedingParentBGrowth.nextStageRemainingMs)}`
+          ? `${breedingParentB.name} ${breedingParentBGrowth.nextStageLabel ?? '성체'}까지 ${formatEggCountdown(breedingParentBGrowth.nextStageRemainingMs)}`
           : null
       ].filter((note): note is string => note !== null);
 
@@ -977,7 +631,7 @@ function App() {
     );
     setEggs((currentEggs) => [breedingResult.egg, ...currentEggs].sort((left, right) => left.hatchAt - right.hatchAt));
     setStatusMessage(
-      `${breedingParentA.name}와 ${breedingParentB.name}가 더 강하게 밀착하며 점액 광택이 번지는 뒤편에서, 축축한 바닥에 새 알이 눌리듯 놓였어요. ` +
+      `${breedingParentA.name}와 ${breedingParentB.name}가 가까이 밀착한 뒤 촉촉한 바닥에 새 알이 놓였어요. ` +
         `${formatEggCountdown(breedingResult.hatchDurationMs)} 뒤에 부화하고, 재교배까지 ${formatEggCountdown(
           breedingResult.cooldownMs
         )} 쉬어갑니다.`
@@ -1008,7 +662,7 @@ function App() {
     setSelectedSnailId(newbornSnail.id);
     const newbornGrowth = getGrowthProfile(newbornSnail, Date.now());
     setStatusMessage(
-      `${newbornSnail.name}이(가) 껍질을 밀어 깨고 젖은 막을 헤치며 나왔어요. 지금은 ${newbornGrowth.label} 단계이고, 성체까지 ${formatEggCountdown(newbornGrowth.adultRemainingMs)} 동안 껍질과 몸이 천천히 자리잡습니다.`
+      `${newbornSnail.name}이(가) 껍질을 밀어 깨고 나왔어요. 지금은 ${newbornGrowth.label} 단계이고, 성체까지 ${formatEggCountdown(newbornGrowth.adultRemainingMs)} 동안 천천히 자랍니다.`
     );
   }
 
@@ -1034,34 +688,16 @@ function App() {
       return;
     }
 
-    if (actionId === 'touch') {
-      snailSounds.playTouchAction();
-      setActiveAction(actionId);
-      setStatusMessage(
-        selectedSnailGrowth.stage === 'newborn'
-          ? `${selectedSnail.name}가 아주 짧은 더듬이를 움찔 세우고 젖은 몸을 더 둥글게 말아 보호 자세를 취했어요.`
-          : selectedSnailGrowth.stage === 'hatchling'
-            ? `${selectedSnail.name}가 얇은 껍질을 감싸듯 몸을 낮췄다가, 곧 다시 조심스럽게 더듬이를 내밀어요.`
-            : selectedSnailGrowth.stage === 'juvenile'
-              ? `${selectedSnail.name}가 길어진 더듬이를 한번 크게 흔들고, 작은 몸 전체를 탄력 있게 움찔했어요.`
-              : `${selectedSnail.name}가 더듬이를 한 번 세우고 몸을 움찔한 뒤 다시 천천히 고개를 내밀었어요.`
-      );
-      return;
-    }
-
-    const nextEditMode = !isEditMode;
-    snailSounds.playEditToggle(nextEditMode);
+    snailSounds.playTouchAction();
     setActiveAction(actionId);
-
-    if (nextEditMode && selectedPalettePropId === null) {
-      setSelectedPalettePropId(defaultPalettePropId);
-    }
-
-    setIsEditMode(nextEditMode);
     setStatusMessage(
-      nextEditMode
-        ? '편집 모드가 열렸어요. 아래 소품을 고른 뒤 테라리움 안을 탭하면 배치되고, 놓은 소품은 드래그로 움직일 수 있어요.'
-        : '편집 모드를 닫고 다시 관찰 화면으로 돌아왔어요.'
+      selectedSnailGrowth.stage === 'newborn'
+        ? `${selectedSnail.name}가 아주 짧은 더듬이를 움찔 세우고 젖은 몸을 더 둥글게 말아 보호 자세를 취했어요.`
+        : selectedSnailGrowth.stage === 'hatchling'
+          ? `${selectedSnail.name}가 얇은 껍질을 감싸듯 몸을 낮췄다가, 곧 다시 조심스럽게 더듬이를 내밀어요.`
+          : selectedSnailGrowth.stage === 'juvenile'
+            ? `${selectedSnail.name}가 길어진 더듬이를 한번 크게 흔들고, 작은 몸 전체를 탄력 있게 움찔했어요.`
+            : `${selectedSnail.name}가 더듬이를 한 번 세우고 몸을 움찔한 뒤 다시 천천히 고개를 내밀었어요.`
     );
   }
 
@@ -1070,7 +706,7 @@ function App() {
     growthProfile: GrowthProfile,
     extraClasses: string[],
     options?: {
-      style?: React.CSSProperties;
+      style?: CSSProperties;
       onClick?: () => void;
       badge?: string | null;
       ariaLabel?: string;
@@ -1106,7 +742,7 @@ function App() {
         onClick={options?.onClick}
         onKeyDown={
           isInteractive
-            ? (event) => {
+            ? (event: KeyboardEvent<HTMLDivElement>) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
                   options?.onClick?.();
@@ -1145,13 +781,13 @@ function App() {
         ? breedingPreview
           ? `점액 교환 연출 · 희귀형 ${formatPercent(breedingPreview.rareChance)} · 예상 부화 ${formatEggCountdown(breedingPreview.hatchDurationMs)}`
           : '두 마리가 가까이 붙어 점액을 교환하는 중'
-        : isEditMode
-          ? selectedPaletteProp
-            ? `${selectedPaletteProp.name} 선택됨 · 빈 공간을 탭해 배치`
-            : '선택된 소품 없음 · 이미 놓은 소품은 드래그로 조정'
-          : readyEggCount > 0
-            ? `부화 가능한 알 ${readyEggCount}개`
-            : `${selectedSnailGrowth.label} · ${selectedGrowthNextText}`;
+        : activeAction === 'feed'
+          ? '먹이를 따라 가장 가까운 바닥 방향으로 몸을 낮게 미는 중'
+          : activeAction === 'touch'
+            ? '촉감 반응 뒤에 더듬이를 천천히 다시 펴는 중'
+            : selectedTerrariumEggs.length > 0 && featuredTerrariumEggStageLabel
+              ? `알 ${selectedTerrariumEggs.length}개 · ${featuredTerrariumEggStageLabel}`
+              : `${selectedSnailGrowth.label} · ${selectedGrowthNextText}`;
   const sceneCaptionTitle = isHatchingSceneActive
     ? `${visibleSceneEffectLabel} 부화`
     : isLayingSceneActive && breedingParentA && breedingParentB
@@ -1174,12 +810,11 @@ function App() {
     <div className="app-shell app-shell--quiet" onPointerDownCapture={handleInterfacePointerDownCapture}>
       <header className="hero-panel hero-panel--compact glass-card">
         <div>
-          <p className="eyebrow">Snail Terrarium / Shared Vivarium</p>
-          <h1>한 공간에서 함께 느리게 살아가는 달팽이 테라리움</h1>
+          <p className="eyebrow">Snail Terrarium / Simple Care Loop</p>
+          <h1>먹이, 터치, 교배에만 집중한 단순한 달팽이 테라리움</h1>
           <p className="hero-copy">
-            복잡한 관리 화면보다, 보유한 달팽이들이 한 테라리움 안에서 같이 기어 다니는 풍경이 먼저 보이도록
-            화면을 정리했습니다. 달팽이를 직접 눌러 관찰 대상을 바꾸고, 필요한 기능은 아래 접힌 패널에서 천천히
-            열어보면 됩니다.
+            소품 편집은 모두 빼고, 한 화면에서 바로 이해되는 돌봄 루프만 남겼습니다. 달팽이를 고르고,
+            먹이를 주고, 터치로 반응을 보고, 성체 두 마리를 골라 교배와 부화까지 이어가면 됩니다.
           </p>
         </div>
 
@@ -1194,7 +829,11 @@ function App() {
           </article>
           <article>
             <strong>{eggs.length}개</strong>
-            <span>알과 부화 루프</span>
+            <span>전체 알 대기열</span>
+          </article>
+          <article>
+            <strong>{readyEggCount}개</strong>
+            <span>즉시 부화 가능</span>
           </article>
         </div>
       </header>
@@ -1206,21 +845,19 @@ function App() {
               <p className="panel-kicker">Shared Terrarium</p>
               <h2>{selectedTerrarium.name}</h2>
               <p className="terrarium-panel__subcopy">
-                {`${ownedSnails.length}마리의 달팽이가 같은 공간 안에서 느리게 움직입니다. 원하는 개체를 바로 눌러 관찰할 수 있어요.`}
+                {`${ownedSnails.length}마리의 달팽이가 같은 공간 안에서 함께 움직입니다. 마음에 드는 개체를 눌러 관찰하고, 아래 액션 세 개만으로 바로 상호작용할 수 있어요.`}
               </p>
             </div>
             <div className="terrarium-summary-chips">
-              <span className="mode-chip">{isEditMode ? '편집 모드' : '관찰 모드'}</span>
               <span className="mini-pill">{`${selectedSnail.name} 관찰 중`}</span>
+              <span className="mini-pill">{activeActionLabel}</span>
             </div>
           </div>
 
           <div
-            ref={sceneRef}
             className={[
               'terrarium-scene',
               `terrarium-scene--${selectedTerrarium.id}`,
-              isEditMode ? 'terrarium-scene--edit' : '',
               activeAction ? `terrarium-scene--action-${activeAction}` : '',
               isLayingSceneActive ? 'terrarium-scene--event-laying' : '',
               isHatchingSceneActive ? 'terrarium-scene--event-hatching' : '',
@@ -1228,7 +865,6 @@ function App() {
             ]
               .filter(Boolean)
               .join(' ')}
-            onPointerDown={handleScenePointerDown}
           >
             {isRainWindowTank ? (
               <div className="rain-curtain" aria-hidden="true">
@@ -1252,41 +888,6 @@ function App() {
             <div className="grass-tuft grass-tuft--3" />
             <div className="mushroom mushroom--left" />
             <div className="mushroom mushroom--right" />
-
-            {sortedTerrariumPlacements.map((placement) => {
-              const definition = propLookup[placement.propId];
-              if (!definition) {
-                return null;
-              }
-
-              const isSelected = selectedPlacedPropId === placement.id;
-              return (
-                <button
-                  key={placement.id}
-                  className={[
-                    'placed-prop',
-                    isSelected ? 'placed-prop--selected' : '',
-                    draggedPropId === placement.id ? 'placed-prop--dragging' : ''
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  data-placed-prop="true"
-                  onPointerDown={(event) => handlePlacedPropPointerDown(event, placement)}
-                  onPointerMove={(event) => handlePlacedPropPointerMove(event, placement)}
-                  onPointerUp={(event) => handlePlacedPropPointerUp(event, placement)}
-                  onPointerCancel={(event) => handlePlacedPropPointerUp(event, placement)}
-                  style={{
-                    left: `${placement.x}%`,
-                    top: `${placement.y}%`,
-                    zIndex: isSelected ? 13 : definition.placementMode === 'ceiling' ? 5 : 8
-                  }}
-                  type="button"
-                >
-                  <PropVisual definition={definition} />
-                  <span className="placed-prop__name">{definition.name}</span>
-                </button>
-              );
-            })}
 
             <div className={`food-offering ${activeAction === 'feed' ? 'food-offering--visible' : ''}`}>
               <span className="food-slice food-slice--cucumber" />
@@ -1364,8 +965,6 @@ function App() {
               );
             })}
 
-            {isEditMode ? <div className="edit-grid" aria-hidden="true" /> : null}
-
             {isLayingSceneActive ? (
               <div className="laying-sequence" aria-hidden="true" style={{ ['--effect-accent' as string]: visibleSceneEffectAccent }}>
                 <span className="laying-ring laying-ring--1" />
@@ -1427,7 +1026,7 @@ function App() {
             {mainActions.map((action) => (
               <button
                 key={action.id}
-                className={`action-button ${action.id === 'edit' && isEditMode ? 'action-button--active' : ''}`}
+                className={`action-button ${action.id === activeAction ? 'action-button--active' : ''}`}
                 onClick={() => handleAction(action.id)}
                 type="button"
               >
@@ -1447,7 +1046,8 @@ function App() {
               <p>{selectedSnailGrowth.description}</p>
               <div className="focus-card__chips">
                 <span>{selectedGrowthAdultText}</span>
-                <span>{selectedSnailGrowth.isMature ? '성체 무늬 고정 완료' : selectedGrowthNextText}</span>
+                <span>{selectedGrowthNextText}</span>
+                <span>{`${selectedGrowthLifetimePercent}% 성장`}</span>
               </div>
             </article>
 
@@ -1496,339 +1096,194 @@ function App() {
             </div>
             <div className="status-metrics">
               <span>{primarySceneMetric}</span>
-              <span>{`소품 ${selectedTerrariumPlacements.length}개`}</span>
+              <span>{`${collectedSpeciesCount}/5종 수집`}</span>
               <span>{`알 ${selectedTerrariumEggs.length}개`}</span>
-              <span>{`쿨다운 ${coolingSnailCount}마리`}</span>
-              <span>{`성체 ${adultSnailCount}마리`}</span>
+              <span>{`즉시 부화 ${readyEggCount}개`}</span>
+              <span>{`재교배 대기 ${coolingSnailCount}마리`}</span>
             </div>
           </div>
         </section>
 
-        <div className="accordion-stack">
-          <details className="glass-card fold-panel" open>
-            <summary>성장과 컬렉션</summary>
-            <div className="fold-panel__body">
-              <div className="collection-stats collection-stats--quiet">
-                <article>
-                  <strong>{ownedSnails.length}</strong>
-                  <span>보유 달팽이</span>
-                </article>
-                <article>
-                  <strong>{collectedSpeciesCount}</strong>
-                  <span>수집 종 수</span>
-                </article>
-                <article>
-                  <strong>{adultSnailCount}</strong>
-                  <span>성체 달팽이</span>
-                </article>
-                <article>
-                  <strong>{readyEggCount}</strong>
-                  <span>즉시 부화 가능</span>
-                </article>
+        <section className="support-grid">
+          <article className="glass-card terrarium-panel terrarium-panel--simple">
+            <div className="panel-header panel-header--terrarium">
+              <div>
+                <p className="panel-kicker">Collection</p>
+                <h2>현재 상태 요약</h2>
+                <p className="terrarium-panel__subcopy">
+                  복잡한 관리 패널 대신, 지금 바로 필요한 성장과 수집 정보만 한곳에 모았습니다.
+                </p>
               </div>
-
-              <section className="growth-panel" aria-label={`${selectedSnail.name} 성장 기록`}>
-                <div className="growth-panel__header">
-                  <div>
-                    <p className="panel-kicker">Growth Journal</p>
-                    <h3>{`${selectedSnail.name} 성장 기록`}</h3>
-                  </div>
-                  <span className={`mini-pill mini-pill--growth mini-pill--growth-${selectedSnailGrowth.stage}`}>
-                    {selectedSnailGrowth.label}
-                  </span>
-                </div>
-
-                <div className="growth-panel__grid">
-                  <article className={`growth-highlight growth-highlight--${selectedSnailGrowth.stage}`}>
-                    <span className="growth-highlight__eyebrow">
-                      {selectedSnailGrowth.isMature ? '성장 완료' : `현재 단계 ${selectedGrowthStagePercent}%`}
-                    </span>
-                    <strong>{selectedGrowthAdultText}</strong>
-                    <p>{selectedSnailGrowth.description}</p>
-                    <small>{selectedSnailGrowth.careTip}</small>
-
-                    <div className="growth-progress" aria-hidden="true">
-                      <span className="growth-progress__track">
-                        <span
-                          className="growth-progress__fill"
-                          style={{ width: `${Math.max(10, selectedGrowthLifetimePercent)}%` }}
-                        />
-                      </span>
-                      <span className="growth-progress__copy">
-                        <span>{selectedSnailGrowth.isMature ? '성체 체형과 무늬 고정 완료' : selectedGrowthNextText}</span>
-                        <strong>{`${selectedGrowthLifetimePercent}% 성장`}</strong>
-                      </span>
-                    </div>
-                  </article>
-
-                  <div className="growth-metrics">
-                    {selectedGrowthMetrics.map((metric) => (
-                      <article className="growth-metric" key={metric.label}>
-                        <div className="growth-metric__copy">
-                          <strong>{metric.label}</strong>
-                          <span>{metric.hint}</span>
-                        </div>
-                        <div className="growth-metric__value">
-                          <span className="growth-metric__track" aria-hidden="true">
-                            <span
-                              className="growth-metric__fill"
-                              style={{ width: `${Math.max(8, Math.round(metric.value * 100))}%` }}
-                            />
-                          </span>
-                          <strong>{`${Math.round(metric.value * 100)}%`}</strong>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-              </section>
+              <span className={`mini-pill mini-pill--growth mini-pill--growth-${selectedSnailGrowth.stage}`}>
+                {selectedSnailGrowth.label}
+              </span>
             </div>
-          </details>
 
-          <details className="glass-card fold-panel">
-            <summary>교배와 알</summary>
-            <div className="fold-panel__body fold-panel__body--breeding">
-              <p className="fold-panel__lead">
-                화면이 복잡해 보이지 않도록 교배 루프는 접어두었습니다. 필요할 때만 열어서 부모 선택, 알 상태,
-                부화 버튼을 확인할 수 있어요.
-              </p>
+            <div className="collection-stats collection-stats--quiet">
+              <article>
+                <strong>{ownedSnails.length}</strong>
+                <span>보유 달팽이</span>
+              </article>
+              <article>
+                <strong>{adultSnailCount}</strong>
+                <span>성체 달팽이</span>
+              </article>
+              <article>
+                <strong>{readyEggCount}</strong>
+                <span>즉시 부화 가능</span>
+              </article>
+              <article>
+                <strong>{coolingSnailCount}</strong>
+                <span>재교배 대기</span>
+              </article>
+            </div>
 
-              <div className="breeding-grid">
-                <label className="breeding-field">
-                  <span>부모 A</span>
-                  <select
-                    className="breeding-select"
-                    onChange={(event) => handleBreedingSelectionChange('parentAId', event.target.value)}
-                    value={breedingSelection.parentAId ?? ''}
-                  >
-                    <option value="">달팽이 선택</option>
-                    {ownedSnails.map((snail) => {
-                      const species = speciesLookup[snail.speciesId] ?? fallbackSpecies;
-                      const growth = getGrowthProfile(snail, clockNow);
-                      return (
-                        <option key={snail.id} value={snail.id}>{`${snail.name} · ${species.name} · ${growth.label}`}</option>
-                      );
-                    })}
-                  </select>
-                </label>
+            <article className="focus-card">
+              <p className="panel-kicker">Growth Snapshot</p>
+              <div className="focus-card__headline">
+                <strong>{selectedSnailSpecies.name}</strong>
+                <span>{selectedSnailSpecies.trait}</span>
+              </div>
+              <p>{selectedSnailSpecies.description}</p>
+              <div className="focus-card__chips">
+                {selectedTerrarium.highlights.map((highlight) => (
+                  <span key={highlight}>{highlight}</span>
+                ))}
+              </div>
+            </article>
+          </article>
 
-                <label className="breeding-field">
-                  <span>부모 B</span>
-                  <select
-                    className="breeding-select"
-                    onChange={(event) => handleBreedingSelectionChange('parentBId', event.target.value)}
-                    value={breedingSelection.parentBId ?? ''}
-                  >
-                    <option value="">달팽이 선택</option>
-                    {ownedSnails.map((snail) => {
-                      const species = speciesLookup[snail.speciesId] ?? fallbackSpecies;
-                      const growth = getGrowthProfile(snail, clockNow);
-                      return (
-                        <option key={snail.id} value={snail.id}>{`${snail.name} · ${species.name} · ${growth.label}`}</option>
-                      );
-                    })}
-                  </select>
-                </label>
+          <article className="glass-card terrarium-panel terrarium-panel--simple breeding-panel">
+            <div className="panel-header panel-header--terrarium">
+              <div>
+                <p className="panel-kicker">Breed Loop</p>
+                <h2>교배와 알</h2>
+                <p className="terrarium-panel__subcopy">
+                  성체 두 마리를 고르면 바로 교배를 시도하고, 알의 상태를 보면서 준비되면 부화시킬 수 있어요.
+                </p>
+              </div>
+              <span className="mini-pill">{breedingButtonLabel}</span>
+            </div>
 
-                <button
-                  className="breeding-button"
-                  disabled={breedingButtonDisabled}
-                  onClick={handleBreedRequest}
-                  type="button"
+            <div className="breeding-grid">
+              <label className="breeding-field">
+                <span>부모 A</span>
+                <select
+                  className="breeding-select"
+                  onChange={(event) => handleBreedingSelectionChange('parentAId', event.target.value)}
+                  value={breedingSelection.parentAId ?? ''}
                 >
-                  {breedingButtonLabel}
-                </button>
-              </div>
-
-              <div className="breeding-pair-summary">
-                <span>
-                  {breedingParentA
-                    ? `${breedingParentA.name} · ${breedingParentAGrowth?.label ?? ''} · ${
-                        breedingParentAGrowth && !breedingParentAGrowth.isMature
-                          ? `${breedingParentAGrowth.nextStageLabel ?? '성체'}까지 ${formatEggCountdown(breedingParentAGrowth.nextStageRemainingMs)}`
-                          : breedingParentACooldown > 0
-                            ? `재교배 ${formatEggCountdown(breedingParentACooldown)}`
-                            : '교배 가능'
-                      }`
-                    : '부모 A 비어 있음'}
-                </span>
-                <span>
-                  {breedingParentB
-                    ? `${breedingParentB.name} · ${breedingParentBGrowth?.label ?? ''} · ${
-                        breedingParentBGrowth && !breedingParentBGrowth.isMature
-                          ? `${breedingParentBGrowth.nextStageLabel ?? '성체'}까지 ${formatEggCountdown(breedingParentBGrowth.nextStageRemainingMs)}`
-                          : breedingParentBCooldown > 0
-                            ? `재교배 ${formatEggCountdown(breedingParentBCooldown)}`
-                            : '교배 가능'
-                      }`
-                    : '부모 B 비어 있음'}
-                </span>
-                <span>{`${selectedTerrarium.name}에 알이 놓이고, 부화 후 새끼는 별도 성장 단계를 거칩니다.`}</span>
-              </div>
-
-              <div className="breeding-balance-grid">
-                <article className="breeding-balance-card">
-                  <strong>{breedingPreview ? formatPercent(breedingPreview.rareChance) : '-'}</strong>
-                  <span>희귀형 결과 확률</span>
-                  <small>{breedingRareSpeciesNames.length > 0 ? breedingRareSpeciesNames.join(' / ') : '일반형 중심 조합'}</small>
-                </article>
-                <article className="breeding-balance-card">
-                  <strong>{breedingPreview ? formatPercent(breedingPreview.promotionChance) : '-'}</strong>
-                  <span>상위 승급 확률</span>
-                  <small>{breedingPreview && breedingPreview.promotionChance > 0 ? '희귀 단계가 한 단계 올라갈 수 있어요.' : '현재 조합은 안정형 번식 루트예요.'}</small>
-                </article>
-                <article className="breeding-balance-card">
-                  <strong>{breedingPreview ? formatEggCountdown(breedingPreview.hatchDurationMs) : '-'}</strong>
-                  <span>예상 부화 시간</span>
-                  <small>{breedingPreview ? `재교배 쿨다운 ${formatEggCountdown(breedingPreview.cooldownMs)}` : '부모 두 마리를 고르면 자동 계산됩니다.'}</small>
-                </article>
-              </div>
-
-              <div className="egg-list">
-                {eggs.length === 0 ? (
-                  <div className="egg-empty">아직 알이 없어요. 부모 두 마리를 고르고 교배를 시작해보세요.</div>
-                ) : (
-                  eggs.map((egg) => {
-                    const eggSpecies = speciesLookup[egg.speciesId] ?? fallbackSpecies;
-                    const eggStage = getEggStage(egg, clockNow);
-                    const eggProgress = getEggProgress(egg, clockNow);
-                    const isReady = eggStage === 'ready';
-                    const stageLabel = eggStageLabels[eggStage];
-                    const stageDescription = eggStageDescriptions[eggStage];
+                  <option value="">달팽이 선택</option>
+                  {ownedSnails.map((snail) => {
+                    const species = speciesLookup[snail.speciesId] ?? fallbackSpecies;
+                    const growth = getGrowthProfile(snail, clockNow);
                     return (
-                      <article className={`egg-card egg-card--${eggStage}`} key={egg.id}>
-                        <div className="egg-card__header">
-                          <span
-                            className={`egg-card__swatch egg-card__swatch--${eggStage}`}
-                            style={getEggVisualStyle(egg)}
-                          />
-                          <div className="egg-card__title">
-                            <strong>{egg.plannedName}</strong>
-                            <span>{`${eggSpecies.name} · ${egg.patternLabel}`}</span>
-                          </div>
-                          <span className={`egg-card__stage egg-card__stage--${eggStage}`}>{stageLabel}</span>
-                        </div>
-                        <div className="egg-card__meta">
-                          <span>{`세대 ${egg.generation}`}</span>
-                          <span>{starterTerrariums.find((terrarium) => terrarium.id === egg.terrariumId)?.name ?? selectedTerrarium.name}</span>
-                        </div>
-                        <div className="egg-card__progress" aria-hidden="true">
-                          <span className={`egg-card__progress-fill egg-card__progress-fill--${eggStage}`} style={{ width: `${Math.max(8, eggProgress * 100)}%` }} />
-                        </div>
-                        <div className="egg-card__progress-copy">
-                          <span>{stageDescription}</span>
-                          <strong>{isReady ? '100% 진행 · 즉시 부화 가능' : `${Math.round(eggProgress * 100)}% 진행`}</strong>
-                        </div>
-                        <button className="egg-card__button" onClick={() => handleHatchEgg(egg.id)} type="button">
-                          {isReady ? '부화시키기' : formatEggCountdown(egg.hatchAt - clockNow)}
-                        </button>
-                      </article>
+                      <option key={snail.id} value={snail.id}>{`${snail.name} · ${species.name} · ${growth.label}`}</option>
                     );
-                  })
-                )}
-              </div>
-            </div>
-          </details>
+                  })}
+                </select>
+              </label>
 
-          <details className="glass-card fold-panel">
-            <summary>꾸미기와 배치</summary>
-            <div className="fold-panel__body fold-panel__body--edit">
-              <p className="fold-panel__lead">
-                편집도 평소엔 접어두고, 꾸미고 싶을 때만 열 수 있게 했습니다. 달팽이들이 함께 보이는 장면을 해치지
-                않도록 배치 기능은 이 안으로 모았습니다.
-              </p>
-
-              <div className="edit-note">
-                {isEditMode
-                  ? '소품을 고른 뒤 테라리움 안을 탭해 배치하세요. 배치된 소품은 드래그로 이동할 수 있어요.'
-                  : '편집 버튼을 누르면 이 패널과 테라리움 안에서 소품 배치가 활성화됩니다.'}
-              </div>
-
-              <div className="edit-toolbar">
-                <button
-                  className="toolbar-button"
-                  disabled={!isEditMode || !selectedPlacedPropId}
-                  onClick={handleDeleteSelectedProp}
-                  type="button"
+              <label className="breeding-field">
+                <span>부모 B</span>
+                <select
+                  className="breeding-select"
+                  onChange={(event) => handleBreedingSelectionChange('parentBId', event.target.value)}
+                  value={breedingSelection.parentBId ?? ''}
                 >
-                  선택 소품 삭제
-                </button>
-                <div className="toolbar-copy">
-                  <strong>
-                    {selectedPlacedPropDefinition
-                      ? `${selectedPlacedPropDefinition.name} 선택됨`
-                      : selectedPaletteProp
-                        ? `${selectedPaletteProp.name} 배치 준비됨`
-                        : '편집 대기 중'}
-                  </strong>
-                  <span>
-                    {selectedPlacedPropDefinition
-                      ? '현재 선택된 소품을 바로 정리할 수 있어요.'
-                      : isEditMode
-                        ? '소품을 선택해 배치하거나, 이미 놓은 소품을 눌러 삭제할 수 있어요.'
-                        : '편집 모드를 켜면 배치와 삭제가 활성화됩니다.'}
-                  </span>
-                </div>
-              </div>
+                  <option value="">달팽이 선택</option>
+                  {ownedSnails.map((snail) => {
+                    const species = speciesLookup[snail.speciesId] ?? fallbackSpecies;
+                    const growth = getGrowthProfile(snail, clockNow);
+                    return (
+                      <option key={snail.id} value={snail.id}>{`${snail.name} · ${species.name} · ${growth.label}`}</option>
+                    );
+                  })}
+                </select>
+              </label>
 
-              <div className="prop-library">
-                {terrariumProps.map((prop) => {
-                  const propCount = selectedTerrariumPlacements.filter((placement) => placement.propId === prop.id).length;
-                  const isSelected = selectedPalettePropId === prop.id;
-
-                  return (
-                    <button
-                      key={prop.id}
-                      className={`prop-card ${isSelected ? 'prop-card--selected' : ''}`}
-                      onClick={() => handlePalettePropClick(prop.id)}
-                      type="button"
-                    >
-                      <PropVisual definition={prop} size="preview" className="prop-card__visual" />
-                      <span className="prop-card__copy">
-                        <strong>{prop.name}</strong>
-                        <span>{prop.description}</span>
-                      </span>
-                      <span className="prop-card__count">{propCount}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <button
+                className="breeding-button"
+                disabled={breedingButtonDisabled}
+                onClick={handleBreedRequest}
+                type="button"
+              >
+                {breedingButtonLabel}
+              </button>
             </div>
-          </details>
-        </div>
+
+            <div className="breeding-pair-summary">
+              <span>{describeBreedingParent('부모 A', breedingParentA, breedingParentAGrowth, breedingParentACooldown)}</span>
+              <span>{describeBreedingParent('부모 B', breedingParentB, breedingParentBGrowth, breedingParentBCooldown)}</span>
+              <span>{`${selectedTerrarium.name} · 알 ${selectedTerrariumEggs.length}개 대기`}</span>
+            </div>
+
+            <div className="breeding-balance-grid">
+              <article className="breeding-balance-card">
+                <strong>{breedingPreview ? formatPercent(breedingPreview.rareChance) : '-'}</strong>
+                <span>희귀형 결과 확률</span>
+                <small>{breedingRareSpeciesNames.length > 0 ? breedingRareSpeciesNames.join(' / ') : '일반형 중심 조합'}</small>
+              </article>
+              <article className="breeding-balance-card">
+                <strong>{breedingPreview ? formatPercent(breedingPreview.promotionChance) : '-'}</strong>
+                <span>상위 승급 확률</span>
+                <small>{breedingPreview && breedingPreview.promotionChance > 0 ? '희귀 단계가 한 단계 올라갈 수 있어요.' : '현재 조합은 안정형 번식 루트예요.'}</small>
+              </article>
+              <article className="breeding-balance-card">
+                <strong>{breedingPreview ? formatEggCountdown(breedingPreview.hatchDurationMs) : '-'}</strong>
+                <span>예상 부화 시간</span>
+                <small>{breedingPreview ? `재교배 쿨다운 ${formatEggCountdown(breedingPreview.cooldownMs)}` : '부모 두 마리를 고르면 자동 계산됩니다.'}</small>
+              </article>
+            </div>
+
+            <div className="egg-list">
+              {eggs.length === 0 ? (
+                <div className="egg-empty">아직 알이 없어요. 부모 두 마리를 고르고 교배를 시작해보세요.</div>
+              ) : (
+                eggs.map((egg) => {
+                  const eggSpecies = speciesLookup[egg.speciesId] ?? fallbackSpecies;
+                  const eggStage = getEggStage(egg, clockNow);
+                  const eggProgress = getEggProgress(egg, clockNow);
+                  const isReady = eggStage === 'ready';
+                  const stageLabel = eggStageLabels[eggStage];
+                  const stageDescription = eggStageDescriptions[eggStage];
+                  return (
+                    <article className={`egg-card egg-card--${eggStage}`} key={egg.id}>
+                      <div className="egg-card__header">
+                        <span
+                          className={`egg-card__swatch egg-card__swatch--${eggStage}`}
+                          style={getEggVisualStyle(egg)}
+                        />
+                        <div className="egg-card__title">
+                          <strong>{egg.plannedName}</strong>
+                          <span>{`${eggSpecies.name} · ${egg.patternLabel}`}</span>
+                        </div>
+                        <span className={`egg-card__stage egg-card__stage--${eggStage}`}>{stageLabel}</span>
+                      </div>
+                      <div className="egg-card__meta">
+                        <span>{`세대 ${egg.generation}`}</span>
+                        <span>{starterTerrariums.find((terrarium) => terrarium.id === egg.terrariumId)?.name ?? selectedTerrarium.name}</span>
+                      </div>
+                      <div className="egg-card__progress" aria-hidden="true">
+                        <span className={`egg-card__progress-fill egg-card__progress-fill--${eggStage}`} style={{ width: `${Math.max(8, eggProgress * 100)}%` }} />
+                      </div>
+                      <div className="egg-card__progress-copy">
+                        <span>{stageDescription}</span>
+                        <strong>{isReady ? '100% 진행 · 즉시 부화 가능' : `${Math.round(eggProgress * 100)}% 진행`}</strong>
+                      </div>
+                      <button className="egg-card__button" onClick={() => handleHatchEgg(egg.id)} type="button">
+                        {isReady ? '부화시키기' : formatEggCountdown(egg.hatchAt - clockNow)}
+                      </button>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+          </article>
+        </section>
       </main>
     </div>
   );
 }
 
 export default App;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

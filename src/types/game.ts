@@ -1,4 +1,4 @@
-﻿export type SnailSpecies = {
+export type SnailSpecies = {
   id: string;
   name: string;
   shellTone: string;
@@ -15,53 +15,12 @@ export type StarterTerrarium = {
   highlights: string[];
 };
 
-export type ActionId = 'feed' | 'touch' | 'breed' | 'edit';
+export type ActionId = 'feed' | 'touch' | 'breed';
 
 export type MainAction = {
   id: ActionId;
   label: string;
   description: string;
-};
-
-export type PropVariant =
-  | 'moss'
-  | 'fern'
-  | 'mushroom-small'
-  | 'mushroom-tall'
-  | 'stone-flat'
-  | 'stone-pile'
-  | 'tunnel'
-  | 'log'
-  | 'leaf-arch'
-  | 'bowl'
-  | 'dish'
-  | 'sign'
-  | 'pot'
-  | 'waterfall'
-  | 'vine'
-  | 'sprout'
-  | 'lamp'
-  | 'clover';
-
-export type PropPlacementMode = 'floor' | 'free' | 'ceiling';
-
-export type TerrariumPropDefinition = {
-  id: string;
-  name: string;
-  description: string;
-  accent: string;
-  secondaryAccent: string;
-  variant: PropVariant;
-  placementMode: PropPlacementMode;
-  width: number;
-  height: number;
-};
-
-export type PlacedTerrariumProp = {
-  id: string;
-  propId: string;
-  x: number;
-  y: number;
 };
 
 export type OwnedSnail = {
@@ -98,12 +57,13 @@ export type BreedingSelection = {
 export type StoredGameState = {
   selectedSnailId: string;
   selectedTerrariumId: string;
-  isEditMode: boolean;
   statusMessage: string;
-  selectedPalettePropId: string | null;
-  placedPropsByTerrarium: Record<string, PlacedTerrariumProp[]>;
   ownedSnails: OwnedSnail[];
   eggs: SnailEgg[];
   breedingSelection: BreedingSelection;
 };
+
+
+
+
 
