@@ -73,6 +73,8 @@ export type StoredGameState = {
   ownedSnails: OwnedSnail[];
   eggs: SnailEgg[];
   breedingSelection: BreedingSelection;
+  rescueGiftCount: number;
+  rescueGiftCooldownUntil: number;
 };
 
 export type ManualSaveSlot = {

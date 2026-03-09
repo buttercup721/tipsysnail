@@ -415,6 +415,12 @@ class SnailSoundEffects {
     this.playTone({ startFreq: 240, endFreq: 180, duration: 0.08, volume: 0.022, whenOffset: 0.08, type: 'square' });
   }
 
+  playGiftEvent(): void {
+    this.playTone({ startFreq: 520, endFreq: 660, duration: 0.12, volume: 0.04, type: 'sine' });
+    this.playTone({ startFreq: 660, endFreq: 820, duration: 0.14, volume: 0.032, whenOffset: 0.08, type: 'triangle' });
+    this.playTone({ startFreq: 820, endFreq: 980, duration: 0.12, volume: 0.022, whenOffset: 0.18, type: 'triangle' });
+  }
+
   playBreedingStart(): void {
     this.playTone({ startFreq: 190, endFreq: 138, duration: 0.18, volume: 0.06, type: 'sine' });
     this.playNoise({ duration: 0.12, volume: 0.02, lowpassHz: 900, highpassHz: 120, whenOffset: 0.02 });

@@ -73,6 +73,14 @@ type SaleQuote = {
 
 type InteractionMode = 'observe' | 'breed' | 'sell';
 
+type RescueGift = {
+  title: string;
+  message: string;
+  balance: number;
+  cucumber: number;
+  carrot: number;
+};
+
 const CURRENT_SAVE_VERSION = 8;
 const defaultStatusMessage = '달팽이를 눌러 살펴보거나, 먹이 점을 편하게 내려놓아 보세요.';
 const fallbackTerrarium = starterTerrariums[0]!;
@@ -85,6 +93,32 @@ const foodDropLifetimeMs = 30_000;
 const maximumSelection = 2;
 const eggClusterColumns = 4;
 const bgmPreferenceKey = 'tipsysnail-bgm-enabled';
+const rescueGiftCooldownMs = 120_000;
+const rescueGiftBalanceThreshold = 22;
+const rescueGiftFoodThreshold = 1;
+const rescueGiftPool: RescueGift[] = [
+  {
+    title: '\uC774\uC2AC \uC120\uBB3C',
+    message: '\uC720\uB9AC\uBCCD \uC704\uC5D0 \uC774\uC2AC\uC774 \uB9FA\uD600\uC11C \uC624\uC774 \uB450 \uAC1C\uC640 \uC791\uC740 \uD3EC\uC778\uD2B8 \uC120\uBB3C\uC744 \uB0A8\uAE30\uACE0 \uAC14\uC5B4\uC694.',
+    balance: 18,
+    cucumber: 2,
+    carrot: 0
+  },
+  {
+    title: '\uBE57\uBB3C \uBC30\uB2EC',
+    message: '\uBE57\uBB3C \uBC30\uB2EC\uC774 \uB3C4\uCC29\uD574 \uB2F9\uADFC\uACFC \uD3EC\uC778\uD2B8\uB97C \uC870\uAE08 \uB193\uACE0 \uAC14\uC5B4\uC694.',
+    balance: 24,
+    cucumber: 0,
+    carrot: 1
+  },
+  {
+    title: '\uC774\uB07C \uBC14\uAD6C\uB2C8',
+    message: '\uC774\uB07C \uBC14\uAD6C\uB2C8\uC5D0\uC11C \uBA39\uC774\uAC00 \uAD74\uB7EC\uB0B4\uB824\uC654\uC5B4\uC694. \uC7A0\uAE50 \uD55C\uC2DC\uB984\uC774 \uB420 \uAC70\uC608\uC694.',
+    balance: 12,
+    cucumber: 1,
+    carrot: 1
+  }
+];
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -121,6 +155,10 @@ function loadBgmPreference(): boolean {
 
   const stored = window.localStorage.getItem(bgmPreferenceKey);
   return stored == null ? true : stored !== 'false';
+}
+
+function getRescueGift(index: number): RescueGift {
+  return rescueGiftPool[index % rescueGiftPool.length] ?? rescueGiftPool[0]!;
 }
 
 function formatShortDuration(milliseconds: number): string {
@@ -319,7 +357,9 @@ function createDefaultState(): StoredGameState {
     breedingSelection: {
       parentAId: null,
       parentBId: null
-    }
+    },
+    rescueGiftCount: 0,
+    rescueGiftCooldownUntil: 0
   };
 }
 
@@ -377,7 +417,15 @@ function normalizeStoredState(stored: Partial<StoredGameState> | null): StoredGa
     foodInventory: sanitizeFoodInventory(stored.foodInventory),
     ownedSnails,
     eggs,
-    breedingSelection: normalizeBreedingSelection(stored.breedingSelection, ownedSnails)
+    breedingSelection: normalizeBreedingSelection(stored.breedingSelection, ownedSnails),
+    rescueGiftCount:
+      typeof stored.rescueGiftCount === 'number' && Number.isFinite(stored.rescueGiftCount)
+        ? Math.max(0, Math.floor(stored.rescueGiftCount))
+        : 0,
+    rescueGiftCooldownUntil:
+      typeof stored.rescueGiftCooldownUntil === 'number' && Number.isFinite(stored.rescueGiftCooldownUntil)
+        ? Math.max(0, stored.rescueGiftCooldownUntil)
+        : 0
   };
 }
 
@@ -531,6 +579,7 @@ function App() {
   const [saleQuote, setSaleQuote] = useState<SaleQuote | null>(null);
   const [manualSaveInfo, setManualSaveInfo] = useState<ManualSaveSlot | null>(() => loadManualSaveSlot());
   const [breedingEffect, setBreedingEffect] = useState<{ ids: string[]; until: number } | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [bgmEnabled, setBgmEnabled] = useState(() => loadBgmPreference());
   const [now, setNow] = useState(() => Date.now());
 
@@ -656,6 +705,32 @@ function App() {
       window.removeEventListener('keydown', unlockAudio);
     };
   }, [bgmEnabled]);
+
+
+  useEffect(() => {
+    const totalFood = gameState.foodInventory.cucumber + gameState.foodInventory.carrot;
+    const isLowOnResources = gameState.balance <= rescueGiftBalanceThreshold && totalFood <= rescueGiftFoodThreshold;
+
+    if (!isLowOnResources || now < gameState.rescueGiftCooldownUntil) {
+      return;
+    }
+
+    const gift = getRescueGift(gameState.rescueGiftCount);
+    const nextCooldown = Date.now() + rescueGiftCooldownMs;
+
+    snailSounds.playGiftEvent();
+    setGameState((previous) => ({
+      ...previous,
+      balance: previous.balance + gift.balance,
+      foodInventory: {
+        cucumber: previous.foodInventory.cucumber + gift.cucumber,
+        carrot: previous.foodInventory.carrot + gift.carrot
+      },
+      rescueGiftCount: previous.rescueGiftCount + 1,
+      rescueGiftCooldownUntil: nextCooldown,
+      statusMessage: `${gift.title} - ${gift.message}`
+    }));
+  }, [gameState.balance, gameState.foodInventory.carrot, gameState.foodInventory.cucumber, gameState.rescueGiftCooldownUntil, gameState.rescueGiftCount, now]);
 
   const hatchReadyEggs = useEffectEvent(() => {
     const currentTime = Date.now();
@@ -903,6 +978,17 @@ function App() {
       }
       return next;
     });
+  };
+
+
+  const handleOpenGuide = (): void => {
+    snailSounds.playUiTap();
+    setGuideOpen(true);
+  };
+
+  const handleCloseGuide = (): void => {
+    snailSounds.playUiTap();
+    setGuideOpen(false);
   };
 
   const handleSnailSelect = (snailId: string): void => {
@@ -1205,6 +1291,16 @@ function App() {
           <strong>달팽이 농장</strong>
           <span>tipsysnail garden</span>
         </div>
+                <button
+          type="button"
+          className="guide-toggle"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleOpenGuide();
+          }}
+        >
+          {'\uC774\uC6A9\uBC29\uBC95'}
+        </button>
         <div className="balance-floating">{formatCurrency(gameState.balance)}</div>
         <button
           type="button"
@@ -1373,6 +1469,43 @@ function App() {
           </>
         )}
       </section>
+
+      {guideOpen ? (
+        <div className="overlay-backdrop" role="presentation" onClick={handleCloseGuide}>
+          <section className="guide-modal" role="dialog" aria-modal="true" aria-label={'\uC774\uC6A9\uBC29\uBC95'} onClick={(event) => event.stopPropagation()}>
+            <div className="guide-modal__head">
+              <strong>{'\uC774\uC6A9\uBC29\uBC95'}</strong>
+              <button type="button" className="guide-modal__close" onClick={handleCloseGuide}>{'\uB2EB\uAE30'}</button>
+            </div>
+            <div className="guide-modal__grid">
+              <section>
+                <strong>{'\uAE30\uBCF8 \uD750\uB984'}</strong>
+                <ul>
+                  <li>{'\uC624\uC774\uC640 \uB2F9\uADFC\uC744 \uC0AC\uC11C \uD14C\uB77C\uB9AC\uC6C0\uC5D0 \uB193\uC544 \uB2EC\uD33D\uC774\uB97C \uD0A4\uC6CC \uC8FC\uC138\uC694.'}</li>
+                  <li>{'\uC131\uC7A5\uD55C \uB2EC\uD33D\uC774\uB294 \uAD50\uBC30\uD558\uAC70\uB098 \uD310\uB9E4\uD574 \uD3EC\uC778\uD2B8\uB97C \uC313\uC744 \uC218 \uC788\uC5B4\uC694.'}</li>
+                  <li>{'\uC54C\uC740 \uC2DC\uAC04\uC774 \uC9C0\uB098\uBA74 \uC790\uB3D9\uC73C\uB85C \uBD80\uD654\uD569\uB2C8\uB2E4.'}</li>
+                </ul>
+              </section>
+              <section>
+                <strong>{'\uC870\uC791 \uBC29\uBC95'}</strong>
+                <ul>
+                  <li>{'\uBA39\uC774 \uCE74\uB4DC\uB97C \uB204\uB974\uACE0 \uD654\uBA74\uC744 \uD130\uCE58\uD558\uBA74 \uB2EC\uD33D\uC774\uAC00 \uADF8 \uACF3\uC73C\uB85C \uC774\uB3D9\uD574\uC694.'}</li>
+                  <li>{'\uAD50\uBC30 \uBAA8\uB4DC\uC5D0\uC11C \uB2EC\uD33D\uC774 \uB450 \uB9C8\uB9AC\uB97C \uCC28\uB840\uB85C \uB20C\uB7EC \uC870\uD569\uD574 \uC8FC\uC138\uC694.'}</li>
+                  <li>{'\uD310\uB9E4 \uBAA8\uB4DC\uC5D0\uC11C \uB2EC\uD33D\uC774\uB97C \uB20C\uB7EC \uAC00\uACA9\uC744 \uD655\uC778\uD558\uACE0 \uCC98\uBD84\uD560 \uC218 \uC788\uC5B4\uC694.'}</li>
+                </ul>
+              </section>
+              <section>
+                <strong>{'\uC124\uC815 \uAC00\uC774\uB4DC'}</strong>
+                <ul>
+                  <li>{'\uC624\uB978\uCABD \uC0C1\uB2E8 BGM \uBC84\uD2BC\uC73C\uB85C \uBC30\uACBD\uC74C\uC744 ON/OFF \uD560 \uC218 \uC788\uC5B4\uC694.'}</li>
+                  <li>{'\uC138\uC774\uBE0C\uC640 \uBD88\uB7EC\uC624\uAE30\uB85C \uC6D0\uD558\uB294 \uC9C0\uC810\uC744 \uBCF4\uAD00\uD558\uC138\uC694.'}</li>
+                  <li>{'\uB3C8\uACFC \uBA39\uC774\uAC00 \uBC14\uB2E5\uB098\uBA74 \uAC00\uB054 \uC791\uC740 \uC120\uBB3C \uC774\uBCA4\uD2B8\uAC00 \uB3C4\uC640\uC918 \uD50C\uB808\uC774\uAC00 \uB04A\uAE30\uC9C0 \uC54A\uAC8C \uD574\uC918\uC694.'}</li>
+                </ul>
+              </section>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {saleQuote ? (
         <div className="overlay-backdrop" role="presentation" onClick={() => setSaleQuote(null)}>
