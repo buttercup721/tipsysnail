@@ -25,6 +25,7 @@ class SnailSoundEffects {
   private bgmInitialized = false;
   private bgmOscillators: OscillatorNode[] = [];
   private bgmModulators: OscillatorNode[] = [];
+  private bgmPulseTimer: number | null = null;
 
   private ensureContext(): AudioContext | null {
     if (typeof window === 'undefined') {
@@ -50,15 +51,29 @@ class SnailSoundEffects {
     return context;
   }
 
+  private unlockContext(context: AudioContext): void {
+    if (context.state === 'suspended') {
+      void context.resume().catch(() => undefined);
+    }
+
+    const buffer = context.createBuffer(1, 1, 22050);
+    const source = context.createBufferSource();
+    const gain = context.createGain();
+    gain.gain.value = 0.0001;
+    source.buffer = buffer;
+    source.connect(gain);
+    gain.connect(context.destination);
+    source.start(0);
+    source.stop(context.currentTime + 0.01);
+  }
+
   prime(): void {
     const context = this.ensureContext();
     if (!context) {
       return;
     }
 
-    if (context.state === 'suspended') {
-      void context.resume().catch(() => undefined);
-    }
+    this.unlockContext(context);
   }
 
 
@@ -199,7 +214,7 @@ class SnailSoundEffects {
       this.createAmbientVoice(context, bgmGain, {
         frequency: 196,
         detune: -4,
-        volume: 0.05,
+        volume: 0.075,
         type: 'sine',
         filterHz: 720,
         lfoRate: 0.07,
@@ -212,7 +227,7 @@ class SnailSoundEffects {
       this.createAmbientVoice(context, bgmGain, {
         frequency: 246.94,
         detune: 3,
-        volume: 0.04,
+        volume: 0.06,
         type: 'triangle',
         filterHz: 840,
         lfoRate: 0.05,
@@ -225,7 +240,7 @@ class SnailSoundEffects {
       this.createAmbientVoice(context, bgmGain, {
         frequency: 293.66,
         detune: -2,
-        volume: 0.024,
+        volume: 0.034,
         type: 'sine',
         filterHz: 980,
         lfoRate: 0.09,
@@ -238,7 +253,7 @@ class SnailSoundEffects {
       this.createAmbientVoice(context, bgmGain, {
         frequency: 392,
         detune: 5,
-        volume: 0.014,
+        volume: 0.022,
         type: 'triangle',
         filterHz: 1100,
         lfoRate: 0.04,
@@ -254,11 +269,9 @@ class SnailSoundEffects {
     const when = context.currentTime;
     bgmGain.gain.cancelScheduledValues(when);
     bgmGain.gain.setValueAtTime(Math.max(0.0001, bgmGain.gain.value), when);
-    bgmGain.gain.exponentialRampToValueAtTime(0.18, when + 2.4);
-
-    if (context.state === 'suspended') {
-      void context.resume().catch(() => undefined);
-    }
+    bgmGain.gain.exponentialRampToValueAtTime(0.26, when + 2.4);
+    this.startBgmPulseLoop();
+    this.unlockContext(context);
   }
 
   stopBgm(): void {
@@ -272,9 +285,10 @@ class SnailSoundEffects {
     bgmGain.gain.cancelScheduledValues(when);
     bgmGain.gain.setValueAtTime(Math.max(0.0001, bgmGain.gain.value), when);
     bgmGain.gain.exponentialRampToValueAtTime(0.0001, when + 1.4);
+    this.stopBgmPulseLoop();
   }
 
-  private playTone({
+  private playToneToTarget(target: AudioNode, {
     startFreq,
     endFreq = startFreq,
     duration,
@@ -283,14 +297,11 @@ class SnailSoundEffects {
     type = 'sine'
   }: ToneOptions): void {
     const context = this.ensureContext();
-    const masterGain = this.masterGain;
-    if (!context || !masterGain) {
+    if (!context) {
       return;
     }
 
-    if (context.state === 'suspended') {
-      void context.resume().catch(() => undefined);
-    }
+    this.unlockContext(context);
 
     const oscillator = context.createOscillator();
     const gain = context.createGain();
@@ -305,9 +316,19 @@ class SnailSoundEffects {
     gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
 
     oscillator.connect(gain);
-    gain.connect(masterGain);
+    gain.connect(target);
     oscillator.start(when);
     oscillator.stop(when + duration + 0.03);
+  }
+
+  private playTone(options: ToneOptions): void {
+    const context = this.ensureContext();
+    const masterGain = this.masterGain;
+    if (!context || !masterGain) {
+      return;
+    }
+
+    this.playToneToTarget(masterGain, options);
   }
 
   private getNoiseBuffer(context: AudioContext): AudioBuffer {
@@ -367,6 +388,48 @@ class SnailSoundEffects {
 
     source.start(when);
     source.stop(when + duration + 0.03);
+  }
+
+  private playBgmPulse(): void {
+    const context = this.context;
+    const bgmGain = this.bgmGain;
+    if (!context || !bgmGain) {
+      return;
+    }
+
+    this.unlockContext(context);
+
+    this.playToneToTarget(bgmGain, { startFreq: 261.63, endFreq: 261.63, duration: 2.8, volume: 0.022, type: 'sine' });
+    this.playToneToTarget(bgmGain, { startFreq: 329.63, endFreq: 329.63, duration: 2.2, volume: 0.014, whenOffset: 0.32, type: 'triangle' });
+    this.playToneToTarget(bgmGain, { startFreq: 392.0, endFreq: 392.0, duration: 1.8, volume: 0.01, whenOffset: 0.9, type: 'triangle' });
+    this.playToneToTarget(bgmGain, { startFreq: 523.25, endFreq: 392.0, duration: 0.78, volume: 0.012, whenOffset: 2.4, type: 'sine' });
+    this.playToneToTarget(bgmGain, { startFreq: 659.25, endFreq: 523.25, duration: 0.54, volume: 0.008, whenOffset: 2.75, type: 'triangle' });
+  }
+
+  private startBgmPulseLoop(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (this.bgmPulseTimer !== null) {
+      return;
+    }
+
+    this.playBgmPulse();
+    this.bgmPulseTimer = window.setInterval(() => {
+      this.playBgmPulse();
+    }, 4200);
+  }
+
+  private stopBgmPulseLoop(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (this.bgmPulseTimer !== null) {
+      window.clearInterval(this.bgmPulseTimer);
+      this.bgmPulseTimer = null;
+    }
   }
 
   playUiTap(): void {

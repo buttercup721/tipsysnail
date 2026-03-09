@@ -1,6 +1,7 @@
-﻿import type { FoodInventory, FoodType, OwnedSnail } from '../types/game';
+import type { FoodInventory, FoodType, OwnedSnail } from '../types/game';
 import type { GrowthProfile, GrowthStage } from './snailGrowth';
 import { getSpeciesTier } from './snailLifecycle';
+import { getMorphValueBonus } from './snailMorphs';
 
 export type FoodOption = {
   type: FoodType;
@@ -76,7 +77,8 @@ export function getSnailSaleValue(snail: OwnedSnail, growthProfile: GrowthProfil
   const rarityTier = Math.min(2, getSpeciesTier(snail.speciesId));
   const baseValue = rarityBaseValueTable[rarityTier] ?? rarityBaseValueTable[0] ?? 52;
   const generationBonus = Math.max(0, snail.generation - 1) * 10;
-  return baseValue + stageValueTable[growthProfile.stage] + generationBonus;
+  const morphBonus = getMorphValueBonus(snail);
+  return baseValue + stageValueTable[growthProfile.stage] + generationBonus + morphBonus;
 }
 
 export function formatCurrency(value: number): string {

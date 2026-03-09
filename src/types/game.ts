@@ -18,6 +18,8 @@ export type StarterTerrarium = {
 export type ActionId = 'feed' | 'touch' | 'breed';
 export type FoodType = 'cucumber' | 'carrot';
 export type RarityLabel = 'common' | 'rare' | 'epic';
+export type ShellPattern = 'banded' | 'speckled' | 'ripple' | 'split' | 'halo';
+export type ShellFinish = 'matte' | 'dewy' | 'pearlescent' | 'aurora';
 
 export type MainAction = {
   id: ActionId;
@@ -31,7 +33,16 @@ export type SnailIdentity = {
   rarePrefix: string | null;
 };
 
-export type OwnedSnail = SnailIdentity & {
+export type SnailMorph = {
+  morphRarity: RarityLabel;
+  shellPattern: ShellPattern;
+  shellFinish: ShellFinish;
+  shellSecondary: string;
+  bodyTint: string;
+  auraTint: string;
+};
+
+export type OwnedSnail = SnailIdentity & SnailMorph & {
   id: string;
   speciesId: string;
   accent: string;
@@ -43,7 +54,7 @@ export type OwnedSnail = SnailIdentity & {
   starter: boolean;
 };
 
-export type SnailEgg = {
+export type SnailEgg = SnailMorph & {
   id: string;
   terrariumId: string;
   parentAId: string;
@@ -52,6 +63,8 @@ export type SnailEgg = {
   accent: string;
   patternLabel: string;
   generation: number;
+  x: number;
+  y: number;
   laidAt: number;
   hatchAt: number;
 };

@@ -308,10 +308,12 @@ export function getGrowthProfile(snail: OwnedSnail, now: number): GrowthProfile 
   };
 }
 
-export function getEggVisualStyle(egg: Pick<SnailEgg, 'speciesId' | 'accent'>): CSSProperties {
+export function getEggVisualStyle(egg: Pick<SnailEgg, 'speciesId' | 'accent' | 'shellSecondary' | 'auraTint'>): CSSProperties {
   const look = eggLooks[egg.speciesId] ?? eggLooks['garden-snail']!;
   return {
     ['--egg-accent' as string]: egg.accent,
+    ['--egg-secondary' as string]: egg.shellSecondary,
+    ['--egg-aura' as string]: egg.auraTint,
     ['--egg-pattern-tone' as string]: look.patternTone,
     ['--egg-pattern-angle' as string]: look.patternAngle,
     ['--egg-crack-angle' as string]: look.crackAngle,

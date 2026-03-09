@@ -2383,3 +2383,287 @@
     align-items: flex-start;
   }
 }
+/* Focused snail compact info card */
+.snail-info-card {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+  z-index: 18;
+  min-width: 220px;
+  max-width: min(320px, calc(100% - 48px));
+  padding: 14px 16px;
+  border: 1px solid rgba(78, 108, 77, 0.18);
+  border-radius: 22px;
+  background: rgba(248, 252, 242, 0.76);
+  box-shadow: 0 20px 40px rgba(41, 61, 43, 0.14);
+  backdrop-filter: blur(22px);
+  display: grid;
+  gap: 10px;
+}
+
+.snail-info-card strong {
+  color: #1e3721;
+  font-size: 1rem;
+  line-height: 1.1;
+}
+
+.snail-info-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.snail-info-card__stage,
+.snail-info-card__price {
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.snail-info-card__stage {
+  background: rgba(229, 240, 224, 0.94);
+  color: #325134;
+}
+
+.snail-info-card__price {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(104, 145, 108, 0.12)), rgba(236, 246, 232, 0.94);
+  color: #234026;
+}
+
+@media (max-width: 720px) {
+  .snail-info-card {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: none;
+    padding: 12px 14px;
+  }
+}
+
+/* Rare morph polish */
+.snail-actor {
+  --shell-secondary: #8f7a5e;
+  --body-tint: #98a48e;
+  --aura-tint: #ecf1de;
+}
+
+.snail-actor .snail-actor__trail {
+  background: linear-gradient(180deg, var(--aura-tint), rgba(255, 255, 255, 0));
+  opacity: calc(0.2 + var(--trail-opacity) * 0.95);
+  filter: blur(6px) saturate(1.15);
+}
+
+.snail-actor .snail-shell {
+  background:
+    radial-gradient(circle at 36% 28%, rgba(255, 255, 255, calc(0.22 + var(--wet-gloss))), transparent 24%),
+    radial-gradient(circle at 67% 70%, rgba(68, 46, 29, 0.16), transparent 37%),
+    linear-gradient(155deg, var(--shell-secondary), var(--shell-accent));
+}
+
+.snail-shell__markings,
+.snail-shell__glow {
+  inset: 0;
+  border-radius: 50%;
+}
+
+.snail-shell__markings {
+  inset: 9px;
+  opacity: 0.48;
+  mix-blend-mode: multiply;
+}
+
+.snail-shell__glow {
+  inset: 2px;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.3), transparent 52%);
+  transition: opacity 0.28s ease;
+}
+
+.snail-actor .snail-body__tail {
+  background: linear-gradient(180deg, var(--body-tint), rgba(90, 102, 81, 0.96));
+}
+
+.snail-actor .snail-body__foot {
+  background:
+    linear-gradient(180deg, var(--body-tint), rgba(108, 120, 97, 0.96)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 6px, transparent 6px 12px);
+}
+
+.snail-actor .snail-body__torso {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--body-tint) 88%, white 12%), rgba(98, 110, 87, 0.98));
+}
+
+.snail-actor .snail-body__mantle {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(92, 106, 85, 0.08));
+}
+
+.snail-actor .snail-body__head {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--body-tint) 84%, white 16%), rgba(102, 116, 90, 0.98));
+}
+
+.snail-actor.pattern-banded .snail-shell__markings {
+  background: repeating-radial-gradient(circle at 46% 46%, rgba(88, 54, 29, 0.42) 0 4px, rgba(88, 54, 29, 0.04) 4px 10px);
+}
+
+.snail-actor.pattern-speckled .snail-shell__markings {
+  background:
+    radial-gradient(circle at 26% 32%, rgba(88, 54, 29, 0.42) 0 4px, transparent 5px),
+    radial-gradient(circle at 67% 28%, rgba(88, 54, 29, 0.28) 0 3px, transparent 4px),
+    radial-gradient(circle at 60% 62%, rgba(88, 54, 29, 0.34) 0 5px, transparent 6px),
+    radial-gradient(circle at 35% 70%, rgba(88, 54, 29, 0.24) 0 3px, transparent 4px);
+}
+
+.snail-actor.pattern-ripple .snail-shell__markings {
+  background: repeating-radial-gradient(circle at 48% 48%, rgba(255, 250, 240, 0) 0 7px, rgba(88, 54, 29, 0.22) 7px 9px, rgba(255, 250, 240, 0) 9px 14px);
+}
+
+.snail-actor.pattern-split .snail-shell__markings {
+  background: linear-gradient(118deg, rgba(95, 59, 31, 0.08) 0 42%, rgba(248, 232, 198, 0.5) 42% 58%, rgba(95, 59, 31, 0.1) 58% 100%);
+}
+
+.snail-actor.pattern-halo .snail-shell__markings {
+  background: radial-gradient(circle at 48% 48%, rgba(255, 255, 255, 0) 0 34%, rgba(248, 239, 196, 0.62) 40% 53%, rgba(255, 255, 255, 0) 58%);
+  opacity: 0.72;
+}
+
+.snail-actor.finish-matte .snail-shell__shine {
+  opacity: calc(0.2 + var(--wet-gloss) * 0.24);
+}
+
+.snail-actor.finish-dewy .snail-shell__shine {
+  opacity: calc(0.4 + var(--wet-gloss) * 0.46);
+}
+
+.snail-actor.finish-pearlescent .snail-shell__shine {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(237, 227, 255, 0.06));
+  opacity: calc(0.5 + var(--wet-gloss) * 0.45);
+}
+
+.snail-actor.finish-pearlescent .snail-shell__glow {
+  opacity: 0.42;
+  background: radial-gradient(circle at 46% 34%, rgba(236, 220, 255, 0.54), transparent 56%);
+}
+
+.snail-actor.finish-aurora .snail-shell__shine {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(191, 255, 228, 0.08));
+  opacity: calc(0.56 + var(--wet-gloss) * 0.48);
+}
+
+.snail-actor.finish-aurora .snail-shell__glow {
+  opacity: 0.58;
+  background: radial-gradient(circle at 46% 34%, rgba(171, 255, 224, 0.62), transparent 58%);
+}
+
+.snail-actor.morph-rare .snail-shell {
+  box-shadow:
+    inset -12px -14px 18px rgba(67, 46, 31, 0.22),
+    inset 10px 12px 16px rgba(255, 255, 255, 0.08),
+    0 12px 18px rgba(39, 54, 35, 0.14),
+    0 0 22px rgba(255, 244, 208, 0.14);
+}
+
+.snail-actor.morph-rare .snail-actor__shadow {
+  opacity: 0.72;
+}
+
+.snail-actor.morph-epic .snail-shell {
+  box-shadow:
+    inset -12px -14px 18px rgba(67, 46, 31, 0.2),
+    inset 10px 12px 16px rgba(255, 255, 255, 0.1),
+    0 16px 26px rgba(39, 54, 35, 0.15),
+    0 0 28px rgba(204, 255, 232, 0.18);
+}
+
+.snail-actor.morph-epic .snail-hitbox::before {
+  border-color: rgba(214, 255, 236, 0.72);
+}
+
+.snail-actor.morph-epic .snail-actor__trail {
+  opacity: calc(0.34 + var(--trail-opacity));
+  filter: blur(7px) saturate(1.24);
+}
+
+/* Egg placement and hatch-ready motion */
+.egg-orb {
+  width: 24px;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.9), transparent 22%),
+    conic-gradient(from 90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.68) calc(var(--egg-progress) * 360deg), rgba(255, 255, 255, 0.12) 0),
+    linear-gradient(155deg, var(--egg-secondary), var(--egg-accent));
+  border: 1px solid rgba(122, 132, 115, 0.26);
+  box-shadow:
+    0 10px 18px rgba(72, 81, 67, 0.18),
+    0 0 14px var(--egg-aura),
+    inset 0 -4px 8px rgba(184, 191, 174, 0.28);
+}
+
+.egg-orb::before,
+.egg-orb::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+}
+
+.egg-orb::before {
+  inset: 3px;
+  background:
+    linear-gradient(var(--egg-pattern-angle), transparent 0 22%, var(--egg-pattern-tone) 22% 34%, transparent 34% 55%, var(--egg-pattern-tone) 55% 68%, transparent 68% 100%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16), transparent 64%);
+  opacity: 0.5;
+}
+
+.egg-orb::after {
+  inset: 5px 7px;
+  background: linear-gradient(var(--egg-crack-angle), transparent 0 40%, var(--egg-crack-tone) 43% 49%, transparent 52% 100%);
+  opacity: calc(0.16 + var(--egg-progress) * 0.5);
+}
+
+.egg-orb.is-stirring {
+  animation: eggPulse 4.8s ease-in-out infinite, eggStir 1.25s ease-in-out infinite;
+  animation-delay: 0s, var(--egg-wobble-delay);
+}
+
+.egg-orb.is-rattling {
+  animation: eggPulse 4s ease-in-out infinite, eggRattle 0.26s steps(2, end) infinite;
+  animation-delay: 0s, var(--egg-wobble-delay);
+  box-shadow:
+    0 10px 18px rgba(72, 81, 67, 0.18),
+    0 0 18px var(--egg-aura),
+    inset 0 -4px 8px rgba(184, 191, 174, 0.32);
+}
+
+@keyframes eggStir {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(-1deg);
+  }
+
+  30% {
+    transform: translate(-48%, -50%) rotate(1.5deg);
+  }
+
+  60% {
+    transform: translate(-52%, -49%) rotate(-1.2deg);
+  }
+}
+
+@keyframes eggRattle {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(-2deg) scale(1);
+  }
+
+  25% {
+    transform: translate(-46%, -52%) rotate(2deg) scale(1.03);
+  }
+
+  50% {
+    transform: translate(-54%, -48%) rotate(-2deg) scale(1.01);
+  }
+
+  75% {
+    transform: translate(-48%, -51%) rotate(1.6deg) scale(1.02);
+  }
+}

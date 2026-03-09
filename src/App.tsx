@@ -1,4 +1,4 @@
-﻿import {
+import {
   startTransition,
   useEffect,
   useEffectEvent,
@@ -27,7 +27,6 @@ import {
   starterFoodInventory
 } from './utils/gameEconomy';
 import {
-  adultGrowthGoalPoints,
   getEggVisualStyle,
   getGrowthProfile,
   type GrowthProfile
@@ -42,6 +41,7 @@ import {
   refreshSnailIdentities
 } from './utils/snailLifecycle';
 import { loadManualSaveSlot, loadStoredGameState, saveManualSaveSlot, saveStoredGameState } from './utils/storage';
+import { createSnailMorph, isMorphRarity, isShellFinish, isShellPattern } from './utils/snailMorphs';
 
 type MotionReaction = 'idle' | 'seek' | 'touch' | 'eat' | 'breed';
 
@@ -52,6 +52,7 @@ type SnailMotion = {
   targetY: number;
   heading: number;
   speed: number;
+  pace: number;
   nextDecisionAt: number;
   reaction: MotionReaction;
   reactionUntil: number;
@@ -81,7 +82,7 @@ type RescueGift = {
   carrot: number;
 };
 
-const CURRENT_SAVE_VERSION = 8;
+const CURRENT_SAVE_VERSION = 9;
 const defaultStatusMessage = '달팽이를 눌러 살펴보거나, 먹이 점을 편하게 내려놓아 보세요.';
 const fallbackTerrarium = starterTerrariums[0]!;
 const motionTickMs = 120;
@@ -188,6 +189,7 @@ function createMotionSeed(snailId: string, index: number): SnailMotion {
   const y = clamp(48 + Math.sin(orbit) * (radius * 0.72), 16, 84);
   const targetX = clamp(x + Math.cos(orbit + 0.9) * 12, 8, 92);
   const targetY = clamp(y + Math.sin(orbit + 0.7) * 10, 12, 88);
+  const pace = 0.82 + (seed % 13) * 0.035;
 
   return {
     x,
@@ -195,7 +197,8 @@ function createMotionSeed(snailId: string, index: number): SnailMotion {
     targetX,
     targetY,
     heading: seed % 360,
-    speed: 0.085 + (seed % 12) * 0.004,
+    speed: (0.07 + (seed % 8) * 0.0035) * pace,
+    pace,
     nextDecisionAt: Date.now() + 1800 + (seed % 2800),
     reaction: 'idle',
     reactionUntil: 0
@@ -204,7 +207,16 @@ function createMotionSeed(snailId: string, index: number): SnailMotion {
 
 function syncMotionMap(previous: Record<string, SnailMotion>, snails: OwnedSnail[]): Record<string, SnailMotion> {
   return Object.fromEntries(
-    snails.map((snail, index) => [snail.id, previous[snail.id] ?? createMotionSeed(snail.id, index)])
+    snails.map((snail, index) => {
+      const seedMotion = createMotionSeed(snail.id, index);
+      const existing = previous[snail.id];
+      return [
+        snail.id,
+        existing
+          ? { ...seedMotion, ...existing, pace: existing.pace ?? seedMotion.pace }
+          : seedMotion
+      ];
+    })
   );
 }
 
@@ -261,21 +273,36 @@ function sanitizeOwnedSnail(
   }
 
   const species = speciesLookup[speciesId]!;
-  const fallbackName = typeof species.name === 'string' && species.name.trim() ? species.name.trim() : '달팽이';
+  const accent = typeof maybeSnail.accent === 'string' && maybeSnail.accent ? maybeSnail.accent : species.accent;
+  const fallbackName = typeof species.name === 'string' && species.name.trim() ? species.name.trim() : '\uB2EC\uD33D\uC774';
   const name = typeof maybeSnail.name === 'string' && maybeSnail.name.trim() ? maybeSnail.name.trim() : fallbackName;
+  const generation = typeof maybeSnail.generation === 'number' && maybeSnail.generation > 0 ? Math.floor(maybeSnail.generation) : 1;
+  const snailId = typeof maybeSnail.id === 'string' ? maybeSnail.id : fallbackId;
+  const morphFallback = createSnailMorph({
+    speciesId,
+    accent,
+    generation,
+    seedText: snailId
+  });
   const growthPoints = typeof maybeSnail.growthPoints === 'number' && Number.isFinite(maybeSnail.growthPoints)
     ? Math.max(0, Math.round(maybeSnail.growthPoints))
     : 0;
 
   return {
-    id: typeof maybeSnail.id === 'string' ? maybeSnail.id : fallbackId,
+    id: snailId,
     name,
     baseName: typeof maybeSnail.baseName === 'string' && maybeSnail.baseName.trim() ? maybeSnail.baseName.trim() : name,
     rarePrefix: typeof maybeSnail.rarePrefix === 'string' && maybeSnail.rarePrefix.trim() ? maybeSnail.rarePrefix.trim() : null,
+    morphRarity: isMorphRarity(maybeSnail.morphRarity) ? maybeSnail.morphRarity : morphFallback.morphRarity,
+    shellPattern: isShellPattern(maybeSnail.shellPattern) ? maybeSnail.shellPattern : morphFallback.shellPattern,
+    shellFinish: isShellFinish(maybeSnail.shellFinish) ? maybeSnail.shellFinish : morphFallback.shellFinish,
+    shellSecondary: typeof maybeSnail.shellSecondary === 'string' && maybeSnail.shellSecondary ? maybeSnail.shellSecondary : morphFallback.shellSecondary,
+    bodyTint: typeof maybeSnail.bodyTint === 'string' && maybeSnail.bodyTint ? maybeSnail.bodyTint : morphFallback.bodyTint,
+    auraTint: typeof maybeSnail.auraTint === 'string' && maybeSnail.auraTint ? maybeSnail.auraTint : morphFallback.auraTint,
     speciesId,
-    accent: typeof maybeSnail.accent === 'string' && maybeSnail.accent ? maybeSnail.accent : species.accent,
-    patternLabel: typeof maybeSnail.patternLabel === 'string' && maybeSnail.patternLabel.trim() ? maybeSnail.patternLabel.trim() : '자연 무늬',
-    generation: typeof maybeSnail.generation === 'number' && maybeSnail.generation > 0 ? Math.floor(maybeSnail.generation) : 1,
+    accent,
+    patternLabel: typeof maybeSnail.patternLabel === 'string' && maybeSnail.patternLabel.trim() ? maybeSnail.patternLabel.trim() : '\uC790\uC5F0 \uBB34\uB2AC',
+    generation,
     bornAt: typeof maybeSnail.bornAt === 'number' && Number.isFinite(maybeSnail.bornAt) ? maybeSnail.bornAt : now - 60_000,
     cooldownUntil: typeof maybeSnail.cooldownUntil === 'number' && Number.isFinite(maybeSnail.cooldownUntil) ? maybeSnail.cooldownUntil : 0,
     growthPoints,
@@ -287,7 +314,8 @@ function sanitizeEgg(
   candidate: unknown,
   fallbackId: string,
   terrariumIds: Set<string>,
-  speciesLookup: Record<string, SnailSpecies>
+  speciesLookup: Record<string, SnailSpecies>,
+  fallbackPosition: { left: number; top: number }
 ): SnailEgg | null {
   if (!candidate || typeof candidate !== 'object') {
     return null;
@@ -303,18 +331,35 @@ function sanitizeEgg(
   const hatchAt = typeof maybeEgg.hatchAt === 'number' && Number.isFinite(maybeEgg.hatchAt)
     ? Math.max(laidAt + 1_000, maybeEgg.hatchAt)
     : laidAt + 45_000;
+  const accent = typeof maybeEgg.accent === 'string' && maybeEgg.accent ? maybeEgg.accent : speciesLookup[speciesId]!.accent;
+  const generation = typeof maybeEgg.generation === 'number' && maybeEgg.generation > 0 ? Math.floor(maybeEgg.generation) : 1;
+  const eggId = typeof maybeEgg.id === 'string' ? maybeEgg.id : fallbackId;
+  const morphFallback = createSnailMorph({
+    speciesId,
+    accent,
+    generation,
+    seedText: eggId
+  });
 
   return {
-    id: typeof maybeEgg.id === 'string' ? maybeEgg.id : fallbackId,
+    id: eggId,
     terrariumId: typeof maybeEgg.terrariumId === 'string' && terrariumIds.has(maybeEgg.terrariumId)
       ? maybeEgg.terrariumId
       : fallbackTerrarium.id,
     parentAId: typeof maybeEgg.parentAId === 'string' ? maybeEgg.parentAId : 'unknown-parent-a',
     parentBId: typeof maybeEgg.parentBId === 'string' ? maybeEgg.parentBId : 'unknown-parent-b',
     speciesId,
-    accent: typeof maybeEgg.accent === 'string' && maybeEgg.accent ? maybeEgg.accent : speciesLookup[speciesId]!.accent,
-    patternLabel: typeof maybeEgg.patternLabel === 'string' && maybeEgg.patternLabel.trim() ? maybeEgg.patternLabel.trim() : '자연 무늬',
-    generation: typeof maybeEgg.generation === 'number' && maybeEgg.generation > 0 ? Math.floor(maybeEgg.generation) : 1,
+    morphRarity: isMorphRarity(maybeEgg.morphRarity) ? maybeEgg.morphRarity : morphFallback.morphRarity,
+    shellPattern: isShellPattern(maybeEgg.shellPattern) ? maybeEgg.shellPattern : morphFallback.shellPattern,
+    shellFinish: isShellFinish(maybeEgg.shellFinish) ? maybeEgg.shellFinish : morphFallback.shellFinish,
+    shellSecondary: typeof maybeEgg.shellSecondary === 'string' && maybeEgg.shellSecondary ? maybeEgg.shellSecondary : morphFallback.shellSecondary,
+    bodyTint: typeof maybeEgg.bodyTint === 'string' && maybeEgg.bodyTint ? maybeEgg.bodyTint : morphFallback.bodyTint,
+    auraTint: typeof maybeEgg.auraTint === 'string' && maybeEgg.auraTint ? maybeEgg.auraTint : morphFallback.auraTint,
+    accent,
+    patternLabel: typeof maybeEgg.patternLabel === 'string' && maybeEgg.patternLabel.trim() ? maybeEgg.patternLabel.trim() : '\uC790\uC5F0 \uBB34\uB2AC',
+    generation,
+    x: typeof maybeEgg.x === 'number' && Number.isFinite(maybeEgg.x) ? clamp(maybeEgg.x, 8, 92) : fallbackPosition.left,
+    y: typeof maybeEgg.y === 'number' && Number.isFinite(maybeEgg.y) ? clamp(maybeEgg.y, 12, 88) : fallbackPosition.top,
     laidAt,
     hatchAt
   };
@@ -393,7 +438,7 @@ function normalizeStoredState(stored: Partial<StoredGameState> | null): StoredGa
 
   const eggs = Array.isArray(stored.eggs)
     ? stored.eggs
-        .map((egg, index) => sanitizeEgg(egg, `restored-egg-${index}`, terrariumIds, speciesLookup))
+        .map((egg, index) => sanitizeEgg(egg, `restored-egg-${index}`, terrariumIds, speciesLookup, getEggPosition(index)))
         .filter((egg): egg is SnailEgg => egg !== null)
         .sort((left, right) => left.hatchAt - right.hatchAt)
     : [];
@@ -504,6 +549,7 @@ function TerrariumSnail({
     zIndex: 20 + Math.round(motion.y),
     transform: `translate(-50%, -50%) rotate(${motion.heading}deg) scale(${scale})`,
     ['--shell-accent' as string]: snail.accent,
+    ['--shell-secondary' as string]: snail.shellSecondary,
     ['--shell-gloss' as string]: String(growth.shellGloss),
     ['--trail-opacity' as string]: String(growth.trailOpacity),
     ['--body-opacity' as string]: String(growth.bodyOpacity),
@@ -517,11 +563,20 @@ function TerrariumSnail({
     ['--wet-gloss' as string]: String(0.22 + growth.shellGloss * 0.32),
     ['--body-stretch' as string]: String(1 + motion.speed * 1.5),
     ['--feelers-sway' as string]: `${Math.max(2.2, 4.8 - motion.speed * 9)}s`,
-    ['--pattern-shift' as string]: `${(hashString(snail.id) % 11) * 3.5}deg`
+    ['--pattern-shift' as string]: `${(hashString(snail.id) % 11) * 3.5}deg`,
+    ['--body-tint' as string]: snail.bodyTint,
+    ['--aura-tint' as string]: snail.auraTint
   } satisfies CSSProperties;
 
+  const actorClassName = [
+    'snail-actor',
+    `morph-${snail.morphRarity}`,
+    `pattern-${snail.shellPattern}`,
+    `finish-${snail.shellFinish}`
+  ].join(' ');
+
   return (
-    <div className="snail-actor" style={actorStyle}>
+    <div className={actorClassName} style={actorStyle}>
       <span className="snail-actor__shadow" />
       <span className="snail-actor__trail" />
       <button
@@ -547,9 +602,11 @@ function TerrariumSnail({
         <span className="snail-shell">
           <span className="snail-shell__rim" />
           <span className="snail-shell__bands" />
+          <span className="snail-shell__markings" />
           <span className="snail-shell__spiral" />
           <span className="snail-shell__core" />
           <span className="snail-shell__shine" />
+          <span className="snail-shell__glow" />
         </span>
         <span className="snail-body">
           <span className="snail-body__tail" />
@@ -602,7 +659,7 @@ function App() {
   const selectedSnails = selectedIds.map((id) => ownedSnailLookup[id]).filter((snail): snail is OwnedSnail => Boolean(snail));
   const focusedSnail = ownedSnailLookup[gameState.selectedSnailId] ?? gameState.ownedSnails[0] ?? null;
   const focusedGrowth = focusedSnail ? growthLookup[focusedSnail.id] : null;
-  const soonestEgg = gameState.eggs[0] ?? null;
+  const focusedSaleValue = focusedSnail && focusedGrowth ? getSnailSaleValue(focusedSnail, focusedGrowth) : null;
   const breedingRequirementText = getBreedingRequirementText(selectedSnails, growthLookup, now);
   const breedingPreview = selectedSnails.length === 2 && !breedingRequirementText
     ? getBreedingPreview(selectedSnails[0]!, selectedSnails[1]! )
@@ -813,6 +870,8 @@ function App() {
       if (targetDrop) {
         desiredSpeed += 0.055;
       }
+
+      desiredSpeed *= motion.pace;
 
       if (motion.reaction === 'touch') {
         desiredSpeed *= 0.42;
@@ -1145,8 +1204,17 @@ function App() {
     }
 
     const [parentA, parentB] = selectedSnails;
-    const breedingResult = createEggFromParents(parentA!, parentB!, fallbackTerrarium.id);
     const currentTime = Date.now();
+    const seededMotionMap = syncMotionMap(motionMap, gameState.ownedSnails);
+    const leftMotion = seededMotionMap[parentA!.id];
+    const rightMotion = seededMotionMap[parentB!.id];
+    const eggPosition = leftMotion && rightMotion
+      ? {
+          x: (leftMotion.x + rightMotion.x) / 2,
+          y: (leftMotion.y + rightMotion.y) / 2
+        }
+      : { x: 50, y: 48 };
+    const breedingResult = createEggFromParents(parentA!, parentB!, fallbackTerrarium.id, eggPosition);
 
     snailSounds.playBreedingStart();
     snailSounds.playLayingScene();
@@ -1154,13 +1222,15 @@ function App() {
       ids: [parentA!.id, parentB!.id],
       until: currentTime + breedingReactionMs
     });
-    setMotionMap((previous) => {
-      const next = syncMotionMap(previous, gameState.ownedSnails);
+    setMotionMap(() => {
+      const next = Object.fromEntries(
+        Object.entries(seededMotionMap).map(([snailId, motion]) => [snailId, { ...motion }])
+      ) as Record<string, SnailMotion>;
       const left = next[parentA!.id];
       const right = next[parentB!.id];
       if (left && right) {
-        const midpointX = (left.x + right.x) / 2;
-        const midpointY = (left.y + right.y) / 2;
+        const midpointX = eggPosition.x;
+        const midpointY = eggPosition.y;
         left.targetX = midpointX - 1.5;
         left.targetY = midpointY;
         left.reaction = 'breed';
@@ -1320,15 +1390,22 @@ function App() {
         {breedingEffect && breedingEffect.until > now ? <div className="breeding-bloom" /> : null}
 
         <div className="egg-cluster" aria-label="달팽이 알">
-          {gameState.eggs.map((egg, index) => {
+          {gameState.eggs.map((egg) => {
+            const eggProgress = clamp((now - egg.laidAt) / Math.max(1, egg.hatchAt - egg.laidAt), 0, 1);
             const eggStyle = {
               ...getEggVisualStyle(egg),
-              left: `${getEggPosition(index).left}%`,
-              top: `${getEggPosition(index).top}%`,
-              ['--egg-progress' as string]: String(clamp((now - egg.laidAt) / Math.max(1, egg.hatchAt - egg.laidAt), 0, 1))
+              left: `${egg.x}%`,
+              top: `${egg.y}%`,
+              ['--egg-progress' as string]: String(eggProgress),
+              ['--egg-wobble-delay' as string]: `${((hashString(egg.id) % 7) * 0.11).toFixed(2)}s`
             } satisfies CSSProperties;
 
-            return <span key={egg.id} className="egg-orb" style={eggStyle} />;
+            const eggClassName = [
+              'egg-orb',
+              eggProgress >= 0.82 ? 'is-rattling' : eggProgress >= 0.56 ? 'is-stirring' : ''
+            ].filter(Boolean).join(' ');
+
+            return <span key={egg.id} className={eggClassName} style={eggStyle} />;
           })}
         </div>
 
@@ -1374,6 +1451,16 @@ function App() {
             );
           })}
         </div>
+
+        {focusedSnail && focusedGrowth && focusedSaleValue !== null ? (
+          <section className="snail-info-card" aria-label={'선택한 달팽이 정보'}>
+            <strong>{focusedSnail.name}</strong>
+            <div className="snail-info-card__meta">
+              <span className="snail-info-card__stage">{focusedGrowth.label}</span>
+              <span className="snail-info-card__price">{'판매가'} {formatCurrency(focusedSaleValue)}</span>
+            </div>
+          </section>
+        ) : null}
 
       </main>
 
@@ -1450,24 +1537,6 @@ function App() {
             </div>
           </article>
         </div>
-      </section>
-
-      <section className="focus-strip">
-        {focusedSnail && focusedGrowth ? (
-          <>
-            <strong>{focusedSnail.name}</strong>
-            <span>{focusedGrowth.label} · 성장 {focusedGrowth.growthPoints}/{adultGrowthGoalPoints}</span>
-            {soonestEgg ? <em>알 {gameState.eggs.length} · {formatShortDuration(soonestEgg.hatchAt - now)}</em> : null}
-            {manualSaveInfo ? <em>세이브 {formatSavedAt(manualSaveInfo.savedAt)}</em> : null}
-          </>
-        ) : (
-          <>
-            <strong>달팽이 농장</strong>
-            <span>달팽이를 눌러 반응을 보거나 먹이 점을 내려놓아 보세요.</span>
-            {soonestEgg ? <em>알 {gameState.eggs.length} · {formatShortDuration(soonestEgg.hatchAt - now)}</em> : null}
-            {manualSaveInfo ? <em>세이브 {formatSavedAt(manualSaveInfo.savedAt)}</em> : null}
-          </>
-        )}
       </section>
 
       {guideOpen ? (

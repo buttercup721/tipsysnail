@@ -1,5 +1,6 @@
 import { snailSpecies } from '../data/gameContent';
 import type { OwnedSnail, RarityLabel, SnailEgg, SnailIdentity, SnailSpecies } from '../types/game';
+import { createInheritedEggPalette, createSnailMorph } from './snailMorphs';
 
 export type BreedingPreview = {
   rareChance: number;
@@ -95,58 +96,8 @@ function createEntityId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function clampColorChannel(value: number): number {
-  return Math.max(0, Math.min(255, Math.round(value)));
-}
-
 function clampMilliseconds(value: number, minimum: number, maximum: number): number {
   return Math.max(minimum, Math.min(maximum, Math.round(value)));
-}
-
-function parseHexColor(hexColor: string): [number, number, number] {
-  const normalizedHex = hexColor.replace('#', '');
-  const safeHex = normalizedHex.length === 3
-    ? normalizedHex
-        .split('')
-        .map((character) => `${character}${character}`)
-        .join('')
-    : normalizedHex;
-
-  return [
-    Number.parseInt(safeHex.slice(0, 2), 16),
-    Number.parseInt(safeHex.slice(2, 4), 16),
-    Number.parseInt(safeHex.slice(4, 6), 16)
-  ];
-}
-
-function formatHexColor(red: number, green: number, blue: number): string {
-  return `#${[red, green, blue]
-    .map((channel) => clampColorChannel(channel).toString(16).padStart(2, '0'))
-    .join('')}`;
-}
-
-function blendHexColors(...colors: string[]): string {
-  const validColors = colors.filter((color) => color.startsWith('#'));
-  if (validColors.length === 0) {
-    return '#c47a3b';
-  }
-
-  const blended = validColors
-    .map(parseHexColor)
-    .reduce<[number, number, number]>(
-      (accumulator, currentColor) => [
-        accumulator[0] + currentColor[0],
-        accumulator[1] + currentColor[1],
-        accumulator[2] + currentColor[2]
-      ],
-      [0, 0, 0]
-    );
-
-  return formatHexColor(
-    blended[0] / validColors.length,
-    blended[1] / validColors.length,
-    blended[2] / validColors.length
-  );
 }
 
 function normalizeOutcomes(outcomes: WeightedOutcome[]): WeightedOutcome[] {
@@ -269,10 +220,17 @@ export function createStarterSnailCollection(): OwnedSnail[] {
   const usedNames = new Set<string>();
   return starterBlueprints.map((starterBlueprint, index) => {
     const identity = createUniqueSnailIdentity(usedNames, starterBlueprint.speciesId);
+    const morph = createSnailMorph({
+      speciesId: starterBlueprint.speciesId,
+      accent: starterBlueprint.accent,
+      generation: 1,
+      seedText: starterBlueprint.id
+    });
     usedNames.add(identity.name);
     return {
       id: starterBlueprint.id,
       ...identity,
+      ...morph,
       speciesId: starterBlueprint.speciesId,
       accent: starterBlueprint.accent,
       patternLabel: starterBlueprint.patternLabel,
@@ -446,26 +404,48 @@ export function getBreedingPreview(parentA: OwnedSnail, parentB: OwnedSnail): Br
   };
 }
 
-export function createEggFromParents(parentA: OwnedSnail, parentB: OwnedSnail, terrariumId: string): BreedingResult {
+export function createEggFromParents(
+  parentA: OwnedSnail,
+  parentB: OwnedSnail,
+  terrariumId: string,
+  eggPosition: { x: number; y: number } = { x: 50, y: 48 }
+): BreedingResult {
   const preview = getBreedingPreview(parentA, parentB);
   const outcomes = getOutcomeWeights(parentA, parentB);
   const offspringSpeciesId = chooseWeightedSpecies(outcomes);
   const offspringSpecies = speciesLookup[offspringSpeciesId] ?? snailSpecies[0]!;
   const generation = Math.max(parentA.generation, parentB.generation) + 1;
-  const accent = blendHexColors(parentA.accent, parentB.accent, offspringSpecies.accent);
   const laidAt = Date.now();
+  const eggId = createEntityId('egg');
+  const inheritedPalette = createInheritedEggPalette(parentA, parentB, offspringSpecies.accent, `${eggId}-${parentA.id}-${parentB.id}`);
+  const accent = inheritedPalette.accent;
+  const morph = createSnailMorph({
+    speciesId: offspringSpeciesId,
+    accent,
+    generation,
+    seedText: `${eggId}-${parentA.id}-${parentB.id}`,
+    parents: [parentA, parentB],
+    inheritedPalette: {
+      shellSecondary: inheritedPalette.shellSecondary,
+      bodyTint: inheritedPalette.bodyTint,
+      auraTint: inheritedPalette.auraTint
+    }
+  });
 
   return {
     ...preview,
     egg: {
-      id: createEntityId('egg'),
+      id: eggId,
       terrariumId,
       parentAId: parentA.id,
       parentBId: parentB.id,
       speciesId: offspringSpeciesId,
+      ...morph,
       accent,
       patternLabel: createPatternLabel(generation),
       generation,
+      x: Math.max(8, Math.min(92, eggPosition.x)),
+      y: Math.max(12, Math.min(88, eggPosition.y)),
       laidAt,
       hatchAt: laidAt + preview.hatchDurationMs
     }
@@ -477,6 +457,12 @@ export function hatchEgg(egg: SnailEgg, existingNames: Iterable<string>): OwnedS
   return {
     id: createEntityId('snail'),
     ...identity,
+    morphRarity: egg.morphRarity,
+    shellPattern: egg.shellPattern,
+    shellFinish: egg.shellFinish,
+    shellSecondary: egg.shellSecondary,
+    bodyTint: egg.bodyTint,
+    auraTint: egg.auraTint,
     speciesId: egg.speciesId,
     accent: egg.accent,
     patternLabel: egg.patternLabel,
