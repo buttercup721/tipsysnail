@@ -1,19 +1,21 @@
-﻿import type { CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import type { OwnedSnail, SnailEgg } from '../types/game';
 
 export type GrowthStage = 'newborn' | 'hatchling' | 'juvenile' | 'subadult' | 'adult';
 
 export type GrowthProfile = {
   ageMs: number;
+  growthPoints: number;
   stage: GrowthStage;
   label: string;
   description: string;
   sceneDescription: string;
   careTip: string;
   nextStageLabel: string | null;
-  nextStageAt: number | null;
-  nextStageRemainingMs: number;
-  adultRemainingMs: number;
+  nextStageTargetPoints: number | null;
+  pointsToNext: number;
+  adultGoalPoints: number;
+  adultRemainingPoints: number;
   stageProgress: number;
   lifetimeProgress: number;
   scale: number;
@@ -35,7 +37,7 @@ export type GrowthProfile = {
 
 type GrowthStageConfig = {
   stage: GrowthStage;
-  untilMs: number | null;
+  minPoints: number;
   label: string;
   description: string;
   sceneDescription: string;
@@ -63,15 +65,23 @@ type EggLook = {
   crackTone: string;
 };
 
+export const growthStageThresholds = {
+  hatchling: 40,
+  juvenile: 100,
+  subadult: 190,
+  adult: 300
+} as const;
+
+export const adultGrowthGoalPoints = growthStageThresholds.adult;
+
 const growthTimeline: GrowthStageConfig[] = [
   {
     stage: 'newborn',
-    untilMs: 45_000,
-    label: '막 부화한 새끼',
-    description:
-      '젖은 막이 아직 마르지 않아 몸을 낮게 끌고 다니고, 껍질 가장자리가 아주 말랑한 단계예요.',
-    sceneDescription: '첫 점액막이 마르는 중 · 짧고 낮은 움직임',
-    careTip: '먹이보다 은신처 가까운 촉촉한 바닥에서 짧게 쉬게 두면 안정돼요.',
+    minPoints: 0,
+    label: '막 부화',
+    description: '껍질이 아직 여리고 몸도 아주 작습니다.',
+    sceneDescription: '방금 태어나 느리게 주변을 더듬는 상태',
+    careTip: '먹이를 자주 챙겨 주면 가장 빠르게 성장합니다.',
     scale: 0.38,
     antennaScale: 0.5,
     shellGloss: 1.18,
@@ -89,12 +99,11 @@ const growthTimeline: GrowthStageConfig[] = [
   },
   {
     stage: 'hatchling',
-    untilMs: 150_000,
-    label: '초기 유체',
-    description:
-      '껍질 첫 고리가 자리 잡는 시기라 자주 멈춰 서고, 작은 더듬이로 가까운 영역만 조심스럽게 살펴봐요.',
-    sceneDescription: '껍질 첫 고리 성장 중 · 조심스럽게 먹이를 탐색',
-    careTip: '짧은 간격으로 먹이 반응을 보며 몸을 너무 오래 벽 쪽으로 보내지 않는 편이 좋아요.',
+    minPoints: growthStageThresholds.hatchling,
+    label: '유체',
+    description: '껍질이 조금 단단해지고 먹이 반응이 빨라집니다.',
+    sceneDescription: '먹이 냄새를 따라 천천히 움직이는 상태',
+    careTip: '오이로 자주 먹이고 당근으로 성장 구간을 넘기면 좋습니다.',
     scale: 0.56,
     antennaScale: 0.66,
     shellGloss: 1.11,
@@ -112,12 +121,11 @@ const growthTimeline: GrowthStageConfig[] = [
   },
   {
     stage: 'juvenile',
-    untilMs: 330_000,
+    minPoints: growthStageThresholds.juvenile,
     label: '어린 개체',
-    description:
-      '몸통이 길어지고 껍질 색이 또렷해지며, 점액 자국도 이전보다 선명하게 남기기 시작하는 성장기예요.',
-    sceneDescription: '체색 선명해지는 중 · 이동 동선이 길어짐',
-    careTip: '먹이 반응이 가장 또렷해지는 구간이라 자주 관찰할수록 성장 차이가 잘 보여요.',
+    description: '몸집이 확실히 커지고 껍데기 무늬가 또렷해집니다.',
+    sceneDescription: '바닥을 넓게 훑으며 먹이를 찾는 상태',
+    careTip: '성장 구간이 길어지는 시기라 당근 효율이 좋아집니다.',
     scale: 0.74,
     antennaScale: 0.81,
     shellGloss: 1.05,
@@ -135,12 +143,11 @@ const growthTimeline: GrowthStageConfig[] = [
   },
   {
     stage: 'subadult',
-    untilMs: 540_000,
+    minPoints: growthStageThresholds.subadult,
     label: '준성체',
-    description:
-      '성체 무늬가 거의 완성되고 벽 타기와 방향 전환이 안정되며, 체형도 성체에 가깝게 정리되는 단계예요.',
-    sceneDescription: '성체 무늬 자리잡는 중 · 벽 타기와 균형이 안정됨',
-    careTip: '이때부터 교배 직전 컨디션을 보는 느낌으로 관찰하면 성체 전환이 더 또렷해요.',
+    description: '거의 다 자라서 판매 가치도 크게 올라갑니다.',
+    sceneDescription: '바닥과 유리벽을 안정적으로 오가는 상태',
+    careTip: '조금만 더 먹이면 성체가 됩니다.',
     scale: 0.88,
     antennaScale: 0.93,
     shellGloss: 1.01,
@@ -158,12 +165,11 @@ const growthTimeline: GrowthStageConfig[] = [
   },
   {
     stage: 'adult',
-    untilMs: null,
+    minPoints: growthStageThresholds.adult,
     label: '성체',
-    description:
-      '껍질 무늬와 체형이 완전히 자리 잡은 안정 단계예요. 교배와 희귀 조합 루프에 참여할 수 있어요.',
-    sceneDescription: '완전한 체형 · 교배 가능한 안정 단계',
-    careTip: '성장 완료 상태라 희귀 조합, 쿨다운 관리, 컬렉션 확장 루프의 중심이 돼요.',
+    description: '완전히 성장해 교배와 판매 가치가 최고치에 도달합니다.',
+    sceneDescription: '무게감 있게 느리게 움직이는 완성 단계',
+    careTip: '교배와 판매 타이밍을 고르기 좋은 상태입니다.',
     scale: 1,
     antennaScale: 1,
     shellGloss: 1,
@@ -180,8 +186,6 @@ const growthTimeline: GrowthStageConfig[] = [
     trailStrength: 0.86
   }
 ];
-
-const adultGrowthWindowMs = growthTimeline[growthTimeline.length - 2]?.untilMs ?? 540_000;
 
 const eggLooks: Record<string, EggLook> = {
   'garden-snail': {
@@ -255,32 +259,37 @@ function interpolateMetric(
 
 export function getGrowthProfile(snail: OwnedSnail, now: number): GrowthProfile {
   const ageMs = Math.max(0, now - snail.bornAt);
-  const stageIndex = growthTimeline.findIndex((stage) => stage.untilMs === null || ageMs < stage.untilMs);
+  const growthPoints = Math.max(0, snail.growthPoints);
+  const stageIndex = growthTimeline.findIndex((_, index) => {
+    const nextStage = growthTimeline[index + 1];
+    return !nextStage || growthPoints < nextStage.minPoints;
+  });
   const currentStageIndex = stageIndex === -1 ? growthTimeline.length - 1 : stageIndex;
   const currentStage = growthTimeline[currentStageIndex]!;
   const nextStage = growthTimeline[Math.min(currentStageIndex + 1, growthTimeline.length - 1)]!;
-  const previousUntilMs = currentStageIndex === 0 ? 0 : growthTimeline[currentStageIndex - 1]?.untilMs ?? 0;
-  const currentUntilMs = currentStage.untilMs ?? adultGrowthWindowMs;
-  const stageSpan = Math.max(1, currentUntilMs - previousUntilMs);
+  const nextStageTargetPoints = currentStage.stage === 'adult' ? null : nextStage.minPoints;
+  const stageStart = currentStage.minPoints;
+  const stageEnd = nextStageTargetPoints ?? adultGrowthGoalPoints;
+  const stageSpan = Math.max(1, stageEnd - stageStart);
   const stageProgress = currentStage.stage === 'adult'
     ? 1
-    : clamp((ageMs - previousUntilMs) / stageSpan, 0, 1);
-  const nextStageAt = currentStage.untilMs === null ? null : snail.bornAt + currentStage.untilMs;
-  const nextStageRemainingMs = nextStageAt ? Math.max(0, nextStageAt - now) : 0;
+    : clamp((growthPoints - stageStart) / stageSpan, 0, 1);
 
   return {
     ageMs,
+    growthPoints,
     stage: currentStage.stage,
     label: currentStage.label,
     description: currentStage.description,
     sceneDescription: currentStage.sceneDescription,
     careTip: currentStage.careTip,
     nextStageLabel: currentStage.stage === 'adult' ? null : nextStage.label,
-    nextStageAt,
-    nextStageRemainingMs,
-    adultRemainingMs: Math.max(0, snail.bornAt + adultGrowthWindowMs - now),
+    nextStageTargetPoints,
+    pointsToNext: nextStageTargetPoints ? Math.max(0, nextStageTargetPoints - growthPoints) : 0,
+    adultGoalPoints: adultGrowthGoalPoints,
+    adultRemainingPoints: Math.max(0, adultGrowthGoalPoints - growthPoints),
     stageProgress,
-    lifetimeProgress: clamp(ageMs / adultGrowthWindowMs, 0, 1),
+    lifetimeProgress: clamp(growthPoints / adultGrowthGoalPoints, 0, 1),
     scale: interpolateMetric(currentStage, nextStage, stageProgress, 'scale'),
     antennaScale: interpolateMetric(currentStage, nextStage, stageProgress, 'antennaScale'),
     shellGloss: interpolateMetric(currentStage, nextStage, stageProgress, 'shellGloss'),
@@ -309,4 +318,3 @@ export function getEggVisualStyle(egg: Pick<SnailEgg, 'speciesId' | 'accent'>): 
     ['--egg-crack-tone' as string]: look.crackTone
   };
 }
-

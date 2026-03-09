@@ -1,10 +1,5 @@
-﻿import { snailSpecies } from '../data/gameContent';
-import type { OwnedSnail, SnailEgg, SnailSpecies } from '../types/game';
-
-type WeightedOutcome = {
-  speciesId: string;
-  weight: number;
-};
+import { snailSpecies } from '../data/gameContent';
+import type { OwnedSnail, RarityLabel, SnailEgg, SnailIdentity, SnailSpecies } from '../types/game';
 
 export type BreedingPreview = {
   rareChance: number;
@@ -16,6 +11,11 @@ export type BreedingPreview = {
 
 export type BreedingResult = BreedingPreview & {
   egg: SnailEgg;
+};
+
+type WeightedOutcome = {
+  speciesId: string;
+  weight: number;
 };
 
 const speciesLookup = Object.fromEntries(
@@ -30,67 +30,62 @@ const rarityTierLookup: Record<string, number> = {
   'strawberry-snail': 2
 };
 
-const starterSnails: OwnedSnail[] = [
-  {
-    id: 'starter-garden-snail',
-    name: '장원영',
-    speciesId: 'garden-snail',
-    accent: '#c47a3b',
-    patternLabel: '정원 소용돌이',
-    generation: 1,
-    bornAt: 1730764800000,
-    cooldownUntil: 0,
-    starter: true
-  },
-  {
-    id: 'starter-amber-snail',
-    name: '카리나',
-    speciesId: 'amber-snail',
-    accent: '#e1a64b',
-    patternLabel: '호박 물결',
-    generation: 1,
-    bornAt: 1730851200000,
-    cooldownUntil: 0,
-    starter: true
-  },
-  {
-    id: 'starter-moss-snail',
-    name: '제니',
-    speciesId: 'moss-snail',
-    accent: '#71935a',
-    patternLabel: '이끼 줄무늬',
-    generation: 1,
-    bornAt: 1730937600000,
-    cooldownUntil: 0,
-    starter: true
+const baseNamePool = [
+  '풀잎', '비누', '모래', '이슬', '보리', '버들', '구름', '연못', '도토리', '조약돌',
+  '고사리', '햇살', '잔디', '솔잎', '다래', '방울', '달빛', '단비', '산들', '들꽃',
+  '오솔', '노을', '초롱', '물결', '새벽', '소담', '나래', '하늘', '이끼', '해솔',
+  '모닥', '누리', '꽃잎', '바람', '별빛', '연두', '호수', '버섯', '해무', '소금',
+  '밀림', '잔물', '숲길', '들풀', '안개', '달무리', '실비', '보슬', '포슬', '무늬'
+];
+
+const compoundTailPool = ['잎', '빛', '결', '솔', '꽃', '샘', '돌', '비', '안개', '별'];
+
+const rarePrefixPoolByTier: Record<number, string[]> = {
+  1: [
+    '수분촉촉',
+    '이슬머금은',
+    '물광피부',
+    '초록윤기',
+    '바람살랑',
+    '유리결',
+    '새벽반짝',
+    '풀향가득',
+    '촉촉물결',
+    '젤리광택',
+    '아침미광',
+    '은은촉촉'
+  ],
+  2: [
+    '무지개빛',
+    '달빛젤리',
+    '별가루반짝',
+    '비단점액',
+    '오로라결',
+    '유성비빛',
+    '심해광택',
+    '물안개광채',
+    '은하수광',
+    '유리비늘'
+  ]
+};
+
+const starterBlueprints = [
+  { id: 'starter-garden-snail', speciesId: 'garden-snail', accent: '#c47a3b', patternLabel: '잔줄 무늬', growthPoints: 80 },
+  { id: 'starter-amber-snail', speciesId: 'amber-snail', accent: '#e1a64b', patternLabel: '호박 결', growthPoints: 140 },
+  { id: 'starter-moss-snail', speciesId: 'moss-snail', accent: '#71935a', patternLabel: '이끼 점무늬', growthPoints: 200 }
+] as const;
+
+const patternPrefixes = ['이슬', '모래', '숲', '달빛', '작은', '물결', '잔줄', '고운'];
+const patternSuffixes = ['띠', '줄', '고리', '결', '반점', '소용돌이'];
+
+function shuffleValues<T>(values: readonly T[]): T[] {
+  const shuffled = [...values];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex]!, shuffled[index]!];
   }
-];
-
-const idolNamePool = [
-  '장원영',
-  '제니',
-  '카리나',
-  '리사',
-  '로제',
-  '안유진',
-  '윈터',
-  '원희',
-  '지수',
-  '화사',
-  '태연',
-  '김채원',
-  '설윤',
-  '리즈',
-  '레이',
-  '나연',
-  '윤아',
-  '슬기',
-  '사나',
-  '이서'
-];
-
-const patternPrefixes = ['이슬', '정원', '비창', '은빛', '클로버', '노을', '별빛', '유리'];
-const patternSuffixes = ['소용돌이', '줄무늬', '점무늬', '물결', '반짝', '고리'];
+  return shuffled;
+}
 
 function createEntityId(prefix: string): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -138,7 +133,7 @@ function blendHexColors(...colors: string[]): string {
 
   const blended = validColors
     .map(parseHexColor)
-    .reduce(
+    .reduce<[number, number, number]>(
       (accumulator, currentColor) => [
         accumulator[0] + currentColor[0],
         accumulator[1] + currentColor[1],
@@ -152,10 +147,6 @@ function blendHexColors(...colors: string[]): string {
     blended[1] / validColors.length,
     blended[2] / validColors.length
   );
-}
-
-function getSpeciesTier(speciesId: string): number {
-  return rarityTierLookup[speciesId] ?? 0;
 }
 
 function normalizeOutcomes(outcomes: WeightedOutcome[]): WeightedOutcome[] {
@@ -184,6 +175,116 @@ function chooseWeightedSpecies(outcomes: WeightedOutcome[]): string {
   return outcomes[outcomes.length - 1]?.speciesId ?? 'garden-snail';
 }
 
+export function getSpeciesTier(speciesId: string): number {
+  return rarityTierLookup[speciesId] ?? 0;
+}
+
+export function getSpeciesRarityLabel(speciesId: string): RarityLabel {
+  const tier = getSpeciesTier(speciesId);
+  if (tier >= 2) {
+    return 'epic';
+  }
+  if (tier >= 1) {
+    return 'rare';
+  }
+  return 'common';
+}
+
+export function isRareSpecies(speciesId: string): boolean {
+  return getSpeciesTier(speciesId) >= 1;
+}
+
+function formatSnailName(baseName: string, rarePrefix: string | null): string {
+  return rarePrefix ? `${rarePrefix} ${baseName}` : baseName;
+}
+
+function createUniqueBaseName(usedNames: Set<string>): string {
+  for (const candidate of shuffleValues(baseNamePool)) {
+    if (!usedNames.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  for (let attempt = 0; attempt < 300; attempt += 1) {
+    const left = baseNamePool[Math.floor(Math.random() * baseNamePool.length)]!;
+    const right = compoundTailPool[Math.floor(Math.random() * compoundTailPool.length)]!;
+    const candidate = `${left}${right}`;
+    if (!usedNames.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  return `달팽이${usedNames.size + 1}`;
+}
+
+function createRarePrefix(tier: number): string | null {
+  if (tier <= 0) {
+    return null;
+  }
+
+  const prefixPool = rarePrefixPoolByTier[Math.min(2, tier)] ?? rarePrefixPoolByTier[1]!;
+  return prefixPool[Math.floor(Math.random() * prefixPool.length)] ?? null;
+}
+
+export function createUniqueSnailIdentity(existingNames: Iterable<string>, speciesId: string): SnailIdentity {
+  const usedNames = new Set(existingNames);
+  const tier = getSpeciesTier(speciesId);
+
+  for (let attempt = 0; attempt < 320; attempt += 1) {
+    const baseName = createUniqueBaseName(usedNames);
+    const rarePrefix = createRarePrefix(tier);
+    const fullName = formatSnailName(baseName, rarePrefix);
+
+    if (!usedNames.has(fullName)) {
+      return {
+        name: fullName,
+        baseName,
+        rarePrefix
+      };
+    }
+  }
+
+  const fallbackBase = `달팽이${usedNames.size + 1}`;
+  const fallbackPrefix = createRarePrefix(tier);
+  return {
+    name: formatSnailName(fallbackBase, fallbackPrefix),
+    baseName: fallbackBase,
+    rarePrefix: fallbackPrefix
+  };
+}
+
+export function refreshSnailIdentities(snails: OwnedSnail[]): OwnedSnail[] {
+  const usedNames = new Set<string>();
+  return snails.map((snail) => {
+    const identity = createUniqueSnailIdentity(usedNames, snail.speciesId);
+    usedNames.add(identity.name);
+    return {
+      ...snail,
+      ...identity
+    };
+  });
+}
+
+export function createStarterSnailCollection(): OwnedSnail[] {
+  const usedNames = new Set<string>();
+  return starterBlueprints.map((starterBlueprint, index) => {
+    const identity = createUniqueSnailIdentity(usedNames, starterBlueprint.speciesId);
+    usedNames.add(identity.name);
+    return {
+      id: starterBlueprint.id,
+      ...identity,
+      speciesId: starterBlueprint.speciesId,
+      accent: starterBlueprint.accent,
+      patternLabel: starterBlueprint.patternLabel,
+      generation: 1,
+      bornAt: Date.now() - (index + 1) * 90_000,
+      cooldownUntil: 0,
+      growthPoints: starterBlueprint.growthPoints,
+      starter: true
+    };
+  });
+}
+
 function getOutcomeWeights(parentA: OwnedSnail, parentB: OwnedSnail): WeightedOutcome[] {
   const speciesPair = [parentA.speciesId, parentB.speciesId].sort().join('|');
   const parentATier = getSpeciesTier(parentA.speciesId);
@@ -192,8 +293,8 @@ function getOutcomeWeights(parentA: OwnedSnail, parentB: OwnedSnail): WeightedOu
   if (parentA.speciesId === parentB.speciesId) {
     if (parentA.speciesId === 'moon-snail') {
       return normalizeOutcomes([
-        { speciesId: 'moon-snail', weight: 0.84 },
-        { speciesId: 'strawberry-snail', weight: 0.16 }
+        { speciesId: 'moon-snail', weight: 0.82 },
+        { speciesId: 'strawberry-snail', weight: 0.18 }
       ]);
     }
 
@@ -209,16 +310,16 @@ function getOutcomeWeights(parentA: OwnedSnail, parentB: OwnedSnail): WeightedOu
 
   if (speciesPair === 'amber-snail|moss-snail') {
     return normalizeOutcomes([
-      { speciesId: 'amber-snail', weight: 0.43 },
-      { speciesId: 'moss-snail', weight: 0.39 },
-      { speciesId: 'moon-snail', weight: 0.18 }
+      { speciesId: 'amber-snail', weight: 0.42 },
+      { speciesId: 'moss-snail', weight: 0.38 },
+      { speciesId: 'moon-snail', weight: 0.2 }
     ]);
   }
 
   if (speciesPair === 'garden-snail|moon-snail') {
     return normalizeOutcomes([
-      { speciesId: 'garden-snail', weight: 0.34 },
-      { speciesId: 'moon-snail', weight: 0.58 },
+      { speciesId: 'garden-snail', weight: 0.36 },
+      { speciesId: 'moon-snail', weight: 0.56 },
       { speciesId: 'strawberry-snail', weight: 0.08 }
     ]);
   }
@@ -234,8 +335,8 @@ function getOutcomeWeights(parentA: OwnedSnail, parentB: OwnedSnail): WeightedOu
 
   if (speciesPair === 'moon-snail|strawberry-snail') {
     return normalizeOutcomes([
-      { speciesId: 'strawberry-snail', weight: 0.52 },
-      { speciesId: 'moon-snail', weight: 0.48 }
+      { speciesId: 'strawberry-snail', weight: 0.54 },
+      { speciesId: 'moon-snail', weight: 0.46 }
     ]);
   }
 
@@ -245,8 +346,8 @@ function getOutcomeWeights(parentA: OwnedSnail, parentB: OwnedSnail): WeightedOu
 
     if (otherParentTier >= 1) {
       return normalizeOutcomes([
-        { speciesId: 'strawberry-snail', weight: 0.62 },
-        { speciesId: otherParentId, weight: 0.38 }
+        { speciesId: 'strawberry-snail', weight: 0.64 },
+        { speciesId: otherParentId, weight: 0.36 }
       ]);
     }
 
@@ -289,55 +390,39 @@ function getPromotionChance(outcomes: WeightedOutcome[], parentA: OwnedSnail, pa
 
 function getCooldownMs(parentA: OwnedSnail, parentB: OwnedSnail, promotionChance: number): number {
   const raritySum = getSpeciesTier(parentA.speciesId) + getSpeciesTier(parentB.speciesId);
-  let cooldownMs = 28000 + raritySum * 12000;
+  let cooldownMs = 28_000 + raritySum * 11_000;
 
   if (parentA.speciesId === parentB.speciesId) {
-    cooldownMs -= 3000;
+    cooldownMs -= 3_000;
   }
 
   if (promotionChance > 0) {
-    cooldownMs += 6000;
+    cooldownMs += 6_000;
   }
 
-  return clampMilliseconds(cooldownMs, 24000, 62000);
+  return clampMilliseconds(cooldownMs, 24_000, 64_000);
 }
 
 function getHatchDurationMs(parentA: OwnedSnail, parentB: OwnedSnail, promotionChance: number): number {
   const raritySum = getSpeciesTier(parentA.speciesId) + getSpeciesTier(parentB.speciesId);
   const highestGeneration = Math.max(parentA.generation, parentB.generation);
-  let hatchDurationMs = 48000 + raritySum * 17000 + Math.max(0, highestGeneration - 1) * 1500;
+  let hatchDurationMs = 44_000 + raritySum * 18_000 + Math.max(0, highestGeneration - 1) * 2_000;
 
   if (parentA.speciesId === parentB.speciesId) {
-    hatchDurationMs -= 4000;
+    hatchDurationMs -= 4_000;
   }
 
   if (promotionChance > 0) {
-    hatchDurationMs += 10000;
+    hatchDurationMs += 10_000;
   }
 
-  return clampMilliseconds(hatchDurationMs, 42000, 98000);
+  return clampMilliseconds(hatchDurationMs, 38_000, 106_000);
 }
 
 function createPatternLabel(generation: number): string {
   const prefix = patternPrefixes[generation % patternPrefixes.length]!;
   const suffix = patternSuffixes[(generation + 2) % patternSuffixes.length]!;
   return `${prefix} ${suffix}`;
-}
-
-function createSnailName(_speciesName: string, collectionSize: number): string {
-  const index = Math.max(0, collectionSize);
-  const baseName = idolNamePool[index % idolNamePool.length]!;
-  const cycle = Math.floor(index / idolNamePool.length);
-
-  if (cycle === 0) {
-    return baseName;
-  }
-
-  return `${baseName} ${cycle + 1}`;
-}
-
-export function createStarterSnailCollection(): OwnedSnail[] {
-  return starterSnails.map((snail) => ({ ...snail }));
 }
 
 export function getBreedingPreview(parentA: OwnedSnail, parentB: OwnedSnail): BreedingPreview {
@@ -361,12 +446,7 @@ export function getBreedingPreview(parentA: OwnedSnail, parentB: OwnedSnail): Br
   };
 }
 
-export function createEggFromParents(
-  parentA: OwnedSnail,
-  parentB: OwnedSnail,
-  terrariumId: string,
-  existingSnailCount: number
-): BreedingResult {
+export function createEggFromParents(parentA: OwnedSnail, parentB: OwnedSnail, terrariumId: string): BreedingResult {
   const preview = getBreedingPreview(parentA, parentB);
   const outcomes = getOutcomeWeights(parentA, parentB);
   const offspringSpeciesId = chooseWeightedSpecies(outcomes);
@@ -385,7 +465,6 @@ export function createEggFromParents(
       speciesId: offspringSpeciesId,
       accent,
       patternLabel: createPatternLabel(generation),
-      plannedName: createSnailName(offspringSpecies.name, existingSnailCount),
       generation,
       laidAt,
       hatchAt: laidAt + preview.hatchDurationMs
@@ -393,16 +472,18 @@ export function createEggFromParents(
   };
 }
 
-export function hatchEgg(egg: SnailEgg): OwnedSnail {
+export function hatchEgg(egg: SnailEgg, existingNames: Iterable<string>): OwnedSnail {
+  const identity = createUniqueSnailIdentity(existingNames, egg.speciesId);
   return {
     id: createEntityId('snail'),
-    name: egg.plannedName,
+    ...identity,
     speciesId: egg.speciesId,
     accent: egg.accent,
     patternLabel: egg.patternLabel,
     generation: egg.generation,
     bornAt: Date.now(),
     cooldownUntil: 0,
+    growthPoints: 0,
     starter: false
   };
 }

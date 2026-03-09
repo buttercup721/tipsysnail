@@ -3,60 +3,60 @@ import type { MainAction, SnailSpecies, StarterTerrarium } from '../types/game';
 export const snailSpecies: SnailSpecies[] = [
   {
     id: 'garden-snail',
-    name: 'Garden Snail',
-    shellTone: '갈색 소용돌이',
+    name: '정원 달팽이',
+    shellTone: '호박 갈색',
     accent: '#c47a3b',
-    trait: '안정적이고 천천히 주변을 살핀다',
-    description: '처음 만나는 기본 달팽이. 어느 테라리움에서도 무난하게 잘 어울린다.'
+    trait: '안정적으로 자라는 기본종',
+    description: '가장 친숙한 종입니다. 성장과 판매 흐름을 익히기 좋습니다.'
   },
   {
     id: 'amber-snail',
-    name: 'Amber Snail',
+    name: '호박 달팽이',
     shellTone: '꿀빛 호박색',
     accent: '#e1a64b',
-    trait: '먹이 냄새를 빨리 맡는다',
-    description: '따뜻한 색감이 돋보이는 종. 먹이 상호작용에서 활발한 인상을 준다.'
+    trait: '먹이를 먹을 때 윤기가 두드러짐',
+    description: '따뜻한 호박빛 껍데기가 특징인 종입니다.'
   },
   {
     id: 'moss-snail',
-    name: 'Moss Snail',
-    shellTone: '이끼빛 초록 패턴',
+    name: '이끼 달팽이',
+    shellTone: '이끼 녹색',
     accent: '#71935a',
-    trait: '이끼와 잎 소품 근처를 선호한다',
-    description: '초록 장식과 함께 두면 가장 달팽이 정원다운 분위기를 만든다.'
+    trait: '차분한 녹색 계열의 자연종',
+    description: '습한 테라리움과 잘 어울리는 잔잔한 종입니다.'
   },
   {
     id: 'moon-snail',
-    name: 'Moon Snail',
-    shellTone: '은회색 반사광',
+    name: '달빛 달팽이',
+    shellTone: '은회색 달빛',
     accent: '#aab6cb',
-    trait: '차분하고 몽환적인 무드를 만든다',
-    description: '비 오는 창가, 밤 배경과 잘 맞는 서정적인 포지션의 달팽이.'
+    trait: '희귀하게 태어나는 레어 종',
+    description: '희귀도가 올라가며 판매가도 크게 뛰는 종입니다.'
   },
   {
     id: 'strawberry-snail',
-    name: 'Strawberry Snail',
-    shellTone: '분홍빛 희귀 무늬',
+    name: '딸기 달팽이',
+    shellTone: '딸기 장밋빛',
     accent: '#d87386',
-    trait: '희귀 조합 수집의 목표가 된다',
-    description: '교배 시스템의 수집 욕구를 만들어주는 하이라이트 종.'
+    trait: '가장 화려한 에픽 종',
+    description: '희귀 접두사와 함께 높은 가치로 거래되는 상위 종입니다.'
   }
 ];
 
 export const starterTerrariums: StarterTerrarium[] = [
   {
     id: 'moss-jar',
-    name: 'Moss Jar',
-    mood: '포근한 이끼 유리병',
-    description: '둥근 실루엣과 따뜻한 녹색이 중심인 초보자용 스타터 테라리움.',
-    highlights: ['작은 곡선형 유리병', '이끼 카펫', '버섯 장식과 잘 어울림']
+    name: '이끼 병',
+    mood: '포근한 숲 바닥',
+    description: '초록 이끼와 흙층이 차분하게 깔린 기본 테라리움입니다.',
+    highlights: ['부드러운 이끼', '짙은 흙층', '따뜻한 유리광']
   },
   {
     id: 'rain-window-tank',
-    name: 'Rain Window Tank',
-    mood: '비 내리는 창가 수조',
-    description: '넓은 직사각 유리벽이 강조되어 벽 타기와 점액 자국 표현에 좋은 테라리움.',
-    highlights: ['넓은 파노라마 뷰', '유리벽 연출 강조', '차분한 회녹색 무드']
+    name: '비 창가',
+    mood: '촉촉한 유리벽',
+    description: '비가 맺힌 창가 분위기로 달팽이 움직임이 더 선명하게 보입니다.',
+    highlights: ['빗물 자국', '차가운 유리빛', '젖은 바닥 질감']
   }
 ];
 
@@ -64,16 +64,16 @@ export const mainActions: MainAction[] = [
   {
     id: 'feed',
     label: '먹이',
-    description: '오이와 상추 조각을 떨어뜨려 주변 달팽이를 유도합니다.'
+    description: '먹이를 사서 원하는 자리에 놓습니다.'
   },
   {
     id: 'touch',
     label: '터치',
-    description: '눈과 더듬이가 반응하는 부드러운 교감 액션입니다.'
+    description: '달팽이를 눌러 반응을 봅니다.'
   },
   {
     id: 'breed',
     label: '교배',
-    description: '성체 두 마리를 선택해 알과 희귀 패턴을 노립니다.'
+    description: '부모 두 마리를 지정해 알을 받습니다.'
   }
 ];
