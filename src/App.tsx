@@ -84,6 +84,7 @@ const eatingReactionMs = 1800;
 const foodDropLifetimeMs = 30_000;
 const maximumSelection = 2;
 const eggClusterColumns = 4;
+const bgmPreferenceKey = 'tipsysnail-bgm-enabled';
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -111,6 +112,15 @@ function arraysEqual(left: readonly string[], right: readonly string[]): boolean
 
 function cloneStoredState(state: StoredGameState): StoredGameState {
   return JSON.parse(JSON.stringify(state)) as StoredGameState;
+}
+
+function loadBgmPreference(): boolean {
+  if (typeof window === 'undefined') {
+    return true;
+  }
+
+  const stored = window.localStorage.getItem(bgmPreferenceKey);
+  return stored == null ? true : stored !== 'false';
 }
 
 function formatShortDuration(milliseconds: number): string {
@@ -521,6 +531,7 @@ function App() {
   const [saleQuote, setSaleQuote] = useState<SaleQuote | null>(null);
   const [manualSaveInfo, setManualSaveInfo] = useState<ManualSaveSlot | null>(() => loadManualSaveSlot());
   const [breedingEffect, setBreedingEffect] = useState<{ ids: string[]; until: number } | null>(null);
+  const [bgmEnabled, setBgmEnabled] = useState(() => loadBgmPreference());
   const [now, setNow] = useState(() => Date.now());
 
   const speciesLookup = useMemo(
@@ -615,6 +626,36 @@ function App() {
 
     return () => window.clearInterval(timerId);
   }, []);
+
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(bgmPreferenceKey, String(bgmEnabled));
+  }, [bgmEnabled]);
+
+  useEffect(() => {
+    if (!bgmEnabled) {
+      snailSounds.stopBgm();
+      return;
+    }
+
+    const unlockAudio = (): void => {
+      snailSounds.startBgm();
+      snailSounds.prime();
+    };
+
+    unlockAudio();
+    window.addEventListener('pointerdown', unlockAudio, { passive: true });
+    window.addEventListener('keydown', unlockAudio);
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
+  }, [bgmEnabled]);
 
   const hatchReadyEggs = useEffectEvent(() => {
     const currentTime = Date.now();
@@ -847,6 +888,21 @@ function App() {
     if (nextStatus) {
       setStatusMessage(nextStatus);
     }
+  };
+
+
+  const handleToggleBgm = (): void => {
+    snailSounds.playUiTap();
+    setBgmEnabled((previous) => {
+      const next = !previous;
+      if (!next) {
+        snailSounds.stopBgm();
+      } else {
+        snailSounds.startBgm();
+        snailSounds.prime();
+      }
+      return next;
+    });
   };
 
   const handleSnailSelect = (snailId: string): void => {
@@ -1150,6 +1206,17 @@ function App() {
           <span>tipsysnail garden</span>
         </div>
         <div className="balance-floating">{formatCurrency(gameState.balance)}</div>
+        <button
+          type="button"
+          className={`bgm-toggle ${bgmEnabled ? 'is-on' : 'is-off'}`}
+          aria-pressed={bgmEnabled}
+          onClick={(event) => {
+            event.stopPropagation();
+            handleToggleBgm();
+          }}
+        >
+          {bgmEnabled ? 'BGM ON' : 'BGM OFF'}
+        </button>
         <div className="scene-caption">{modeLabel}</div>
         {activeFoodType ? <div className="feed-cursor-hint">{foodCatalog[activeFoodType].label}</div> : null}
         {interactionMode === 'sell' ? <div className="mode-pill mode-pill--sell">판매 모드</div> : null}

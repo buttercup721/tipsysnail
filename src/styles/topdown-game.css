@@ -2246,3 +2246,51 @@
     grid-template-columns: 1fr;
   }
 }
+/* Ambient BGM toggle */
+.bgm-toggle {
+  position: absolute;
+  top: 78px;
+  right: 26px;
+  z-index: 18;
+  padding: 10px 14px;
+  border: 1px solid rgba(78, 108, 77, 0.18);
+  border-radius: 999px;
+  background: rgba(248, 252, 242, 0.78);
+  color: #28462c;
+  box-shadow: 0 18px 36px rgba(44, 66, 47, 0.12);
+  backdrop-filter: blur(20px);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+
+.bgm-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.bgm-toggle.is-on {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(94, 140, 102, 0.12)), rgba(237, 246, 232, 0.84);
+}
+
+.bgm-toggle.is-off {
+  background: rgba(244, 247, 240, 0.74);
+  color: #617863;
+}
+
+.mode-pill {
+  top: 126px;
+}
+
+@media (max-width: 720px) {
+  .bgm-toggle {
+    top: 62px;
+    right: 16px;
+    padding: 9px 12px;
+    font-size: 0.74rem;
+  }
+
+  .mode-pill {
+    bottom: 220px;
+  }
+}

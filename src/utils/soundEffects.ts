@@ -21,6 +21,10 @@ class SnailSoundEffects {
   private context: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
+  private bgmGain: GainNode | null = null;
+  private bgmInitialized = false;
+  private bgmOscillators: OscillatorNode[] = [];
+  private bgmModulators: OscillatorNode[] = [];
 
   private ensureContext(): AudioContext | null {
     if (typeof window === 'undefined') {
@@ -55,6 +59,219 @@ class SnailSoundEffects {
     if (context.state === 'suspended') {
       void context.resume().catch(() => undefined);
     }
+  }
+
+
+  private ensureBgmGain(context: AudioContext): GainNode | null {
+    const masterGain = this.masterGain;
+    if (!masterGain) {
+      return null;
+    }
+
+    if (this.bgmGain) {
+      return this.bgmGain;
+    }
+
+    const bgmGain = context.createGain();
+    bgmGain.gain.value = 0.0001;
+    bgmGain.connect(masterGain);
+    this.bgmGain = bgmGain;
+    return bgmGain;
+  }
+
+  private createAmbientVoice(
+    context: AudioContext,
+    target: AudioNode,
+    {
+      frequency,
+      detune,
+      volume,
+      type,
+      filterHz,
+      lfoRate,
+      lfoDepth,
+      tremoloRate,
+      tremoloDepth,
+      pan
+    }: {
+      frequency: number;
+      detune: number;
+      volume: number;
+      type: OscillatorType;
+      filterHz: number;
+      lfoRate: number;
+      lfoDepth: number;
+      tremoloRate: number;
+      tremoloDepth: number;
+      pan: number;
+    }
+  ): void {
+    const oscillator = context.createOscillator();
+    const filter = context.createBiquadFilter();
+    const gain = context.createGain();
+    const detuneLfo = context.createOscillator();
+    const detuneLfoGain = context.createGain();
+    const tremoloLfo = context.createOscillator();
+    const tremoloLfoGain = context.createGain();
+
+    oscillator.type = type;
+    oscillator.frequency.value = frequency;
+    oscillator.detune.value = detune;
+
+    filter.type = 'lowpass';
+    filter.frequency.value = filterHz;
+    filter.Q.value = 0.0001;
+
+    gain.gain.value = volume;
+
+    detuneLfo.type = 'sine';
+    detuneLfo.frequency.value = lfoRate;
+    detuneLfoGain.gain.value = lfoDepth;
+
+    tremoloLfo.type = 'sine';
+    tremoloLfo.frequency.value = tremoloRate;
+    tremoloLfoGain.gain.value = tremoloDepth;
+
+    oscillator.connect(filter);
+    filter.connect(gain);
+
+    if (typeof context.createStereoPanner === 'function') {
+      const panner = context.createStereoPanner();
+      panner.pan.value = pan;
+      gain.connect(panner);
+      panner.connect(target);
+    } else {
+      gain.connect(target);
+    }
+
+    detuneLfo.connect(detuneLfoGain);
+    detuneLfoGain.connect(oscillator.detune);
+    tremoloLfo.connect(tremoloLfoGain);
+    tremoloLfoGain.connect(gain.gain);
+
+    oscillator.start();
+    detuneLfo.start();
+    tremoloLfo.start();
+
+    this.bgmOscillators.push(oscillator);
+    this.bgmModulators.push(detuneLfo, tremoloLfo);
+  }
+
+  private createAmbientNoise(context: AudioContext, target: AudioNode): void {
+    const source = context.createBufferSource();
+    const highpass = context.createBiquadFilter();
+    const lowpass = context.createBiquadFilter();
+    const gain = context.createGain();
+
+    source.buffer = this.getNoiseBuffer(context);
+    source.loop = true;
+
+    highpass.type = 'highpass';
+    highpass.frequency.value = 120;
+
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 540;
+
+    gain.gain.value = 0.0028;
+
+    source.connect(highpass);
+    highpass.connect(lowpass);
+    lowpass.connect(gain);
+    gain.connect(target);
+
+    source.start();
+  }
+
+  startBgm(): void {
+    const context = this.ensureContext();
+    if (!context) {
+      return;
+    }
+
+    const bgmGain = this.ensureBgmGain(context);
+    if (!bgmGain) {
+      return;
+    }
+
+    if (!this.bgmInitialized) {
+      this.bgmInitialized = true;
+
+      this.createAmbientVoice(context, bgmGain, {
+        frequency: 196,
+        detune: -4,
+        volume: 0.05,
+        type: 'sine',
+        filterHz: 720,
+        lfoRate: 0.07,
+        lfoDepth: 6,
+        tremoloRate: 0.11,
+        tremoloDepth: 0.01,
+        pan: -0.32
+      });
+
+      this.createAmbientVoice(context, bgmGain, {
+        frequency: 246.94,
+        detune: 3,
+        volume: 0.04,
+        type: 'triangle',
+        filterHz: 840,
+        lfoRate: 0.05,
+        lfoDepth: 7,
+        tremoloRate: 0.09,
+        tremoloDepth: 0.012,
+        pan: 0.28
+      });
+
+      this.createAmbientVoice(context, bgmGain, {
+        frequency: 293.66,
+        detune: -2,
+        volume: 0.024,
+        type: 'sine',
+        filterHz: 980,
+        lfoRate: 0.09,
+        lfoDepth: 5,
+        tremoloRate: 0.13,
+        tremoloDepth: 0.008,
+        pan: 0.1
+      });
+
+      this.createAmbientVoice(context, bgmGain, {
+        frequency: 392,
+        detune: 5,
+        volume: 0.014,
+        type: 'triangle',
+        filterHz: 1100,
+        lfoRate: 0.04,
+        lfoDepth: 4,
+        tremoloRate: 0.07,
+        tremoloDepth: 0.006,
+        pan: -0.08
+      });
+
+      this.createAmbientNoise(context, bgmGain);
+    }
+
+    const when = context.currentTime;
+    bgmGain.gain.cancelScheduledValues(when);
+    bgmGain.gain.setValueAtTime(Math.max(0.0001, bgmGain.gain.value), when);
+    bgmGain.gain.exponentialRampToValueAtTime(0.18, when + 2.4);
+
+    if (context.state === 'suspended') {
+      void context.resume().catch(() => undefined);
+    }
+  }
+
+  stopBgm(): void {
+    const context = this.context;
+    const bgmGain = this.bgmGain;
+    if (!context || !bgmGain) {
+      return;
+    }
+
+    const when = context.currentTime;
+    bgmGain.gain.cancelScheduledValues(when);
+    bgmGain.gain.setValueAtTime(Math.max(0.0001, bgmGain.gain.value), when);
+    bgmGain.gain.exponentialRampToValueAtTime(0.0001, when + 1.4);
   }
 
   private playTone({
