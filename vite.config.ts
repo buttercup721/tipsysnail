@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icon.svg', 'maskable-icon.svg'],
       manifest: {
-        name: 'Snail Terrarium',
-        short_name: 'SnailTerrarium',
-        description: 'A cozy snail-raising terrarium game inspired by observation, decorating, and gentle interaction.',
+        name: '달팽이 농장: tipsysnail garden',
+        short_name: 'tipsysnail garden',
+        description: '달팽이 농장: tipsysnail garden - 먹이, 교배, 성장, 판매를 즐기는 탑다운 웹 게임.',
         theme_color: '#4c7a57',
         background_color: '#eef5df',
         display: 'standalone',

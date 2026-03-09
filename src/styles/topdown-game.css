@@ -13,6 +13,34 @@
   gap: 12px;
 }
 
+.hud-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hud-brand {
+  display: grid;
+  gap: 2px;
+  padding: 12px 16px;
+  border-radius: 24px;
+  background: rgba(251, 255, 246, 0.82);
+  border: 1px solid rgba(58, 94, 67, 0.16);
+  box-shadow: 0 18px 44px rgba(49, 71, 53, 0.12);
+}
+
+.hud-brand strong {
+  font-size: 1.05rem;
+  color: #1f341f;
+}
+
+.hud-brand span {
+  font-size: 0.78rem;
+  color: #688169;
+  text-transform: lowercase;
+}
+
 .resource-strip,
 .hud-tools {
   display: flex;
@@ -845,5 +873,312 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+}
+.brand-floating,
+.balance-floating,
+.mode-pill,
+.mode-overlay,
+.control-ribbon,
+.focus-strip,
+.supply-card,
+.mode-rack button {
+  border: 1px solid rgba(58, 94, 67, 0.16);
+  box-shadow: 0 18px 44px rgba(49, 71, 53, 0.12);
+  backdrop-filter: blur(16px);
+}
+
+.brand-floating,
+.balance-floating,
+.mode-pill,
+.mode-overlay {
+  position: absolute;
+  z-index: 18;
+}
+
+.brand-floating {
+  top: 18px;
+  left: 18px;
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 22px;
+  background: rgba(251, 255, 246, 0.78);
+}
+
+.brand-floating strong {
+  font-size: 0.96rem;
+  color: #223622;
+}
+
+.brand-floating span {
+  font-size: 0.76rem;
+  color: #69826a;
+  text-transform: lowercase;
+}
+
+.balance-floating {
+  top: 20px;
+  right: 22px;
+  padding: 8px 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  font-weight: 800;
+  color: #1f3820;
+}
+
+.scene-caption {
+  top: 86px;
+  left: 50%;
+  max-width: min(82%, 560px);
+  background: rgba(249, 253, 244, 0.72);
+  font-size: 0.92rem;
+}
+
+.feed-cursor-hint {
+  top: auto;
+  right: 18px;
+  bottom: 22px;
+  padding: 10px 16px;
+}
+
+.mode-pill {
+  right: 18px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(249, 253, 244, 0.84);
+  color: #315031;
+}
+
+.mode-pill--sell {
+  top: 84px;
+}
+
+.mode-pill--breed {
+  top: 84px;
+}
+
+.food-drop {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  animation: foodPulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.16);
+}
+
+.food-drop::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+}
+
+.food-drop--cucumber {
+  background: radial-gradient(circle at 35% 35%, #d3f2a2, #67a94c 70%);
+}
+
+.food-drop--carrot {
+  background: radial-gradient(circle at 35% 35%, #ffd68c, #eb7d28 70%);
+}
+
+.snail-select-order {
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 251, 232, 0.96);
+  color: #42563d;
+  font-size: 0.82rem;
+  font-weight: 800;
+  box-shadow: 0 8px 16px rgba(67, 85, 64, 0.16);
+}
+
+.control-ribbon {
+  display: grid;
+  gap: 12px;
+}
+
+.supply-rack,
+.mode-rack {
+  display: grid;
+  gap: 10px;
+}
+
+.supply-rack {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.supply-card,
+.focus-strip {
+  border-radius: 24px;
+  background: rgba(251, 255, 246, 0.8);
+}
+
+.supply-card {
+  padding: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.supply-card__pick,
+.supply-card__buy,
+.mode-rack button {
+  border: none;
+  border-radius: 18px;
+  transition: transform 0.18s ease, background-color 0.18s ease, opacity 0.18s ease;
+}
+
+.supply-card__pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 16px;
+  background: rgba(240, 247, 235, 0.94);
+  color: #304f31;
+}
+
+.supply-card__pick strong {
+  font-size: 0.98rem;
+}
+
+.supply-card__pick em {
+  margin-left: auto;
+  font-style: normal;
+  color: #698269;
+}
+
+.supply-card.is-active .supply-card__pick {
+  background: linear-gradient(180deg, #6c9a73, #52725b);
+  color: #f6fff5;
+}
+
+.supply-card.is-active .supply-card__pick em {
+  color: rgba(246, 255, 245, 0.82);
+}
+
+.supply-card__buy {
+  padding: 12px 14px;
+  background: rgba(228, 239, 221, 0.94);
+  color: #335234;
+}
+
+.supply-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.56);
+}
+
+.supply-dot--cucumber {
+  background: #69ad4d;
+}
+
+.supply-dot--carrot {
+  background: #ef8428;
+}
+
+.mode-rack {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mode-rack button {
+  padding: 14px 16px;
+  background: rgba(251, 255, 246, 0.8);
+  color: #315031;
+}
+
+.mode-rack button.is-active {
+  background: linear-gradient(180deg, #6e9c76, #52745c);
+  color: #f5fff3;
+}
+
+.focus-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+}
+
+.focus-strip strong {
+  color: #223622;
+}
+
+.focus-strip span,
+.focus-strip em,
+.mode-overlay__hint {
+  font-size: 0.9rem;
+  color: #607961;
+  font-style: normal;
+}
+
+.mode-overlay {
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  width: min(92%, 520px);
+  padding: 16px;
+  border-radius: 24px;
+  background: rgba(251, 255, 247, 0.9);
+  display: grid;
+  gap: 10px;
+}
+
+.mode-overlay__names,
+.mode-overlay__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.mode-overlay__names span {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(237, 244, 232, 0.92);
+  color: #2e4c2f;
+  text-align: center;
+}
+
+.mode-overlay__actions .action-button {
+  flex: 1;
+}
+
+@keyframes foodPulse {
+  0%,
+  100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.18); }
+}
+
+@media (max-width: 900px) {
+  .balance-floating {
+    font-size: 1.18rem;
+  }
+
+  .scene-caption {
+    top: 90px;
+    max-width: calc(100% - 36px);
+  }
+
+  .supply-rack,
+  .mode-rack,
+  .mode-overlay__names,
+  .mode-overlay__actions {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .supply-card {
+    grid-template-columns: 1fr;
   }
 }

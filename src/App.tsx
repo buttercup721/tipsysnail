@@ -71,22 +71,10 @@ type SaleQuote = {
   total: number;
 };
 
-type TerrariumSnailProps = {
-  snail: OwnedSnail;
-  species: SnailSpecies;
-  growth: GrowthProfile;
-  motion: SnailMotion;
-  selected: boolean;
-  focused: boolean;
-  touched: boolean;
-  eating: boolean;
-  breeding: boolean;
-  clickDisabled: boolean;
-  onSelect: (snailId: string) => void;
-};
+type InteractionMode = 'observe' | 'breed' | 'sell';
 
 const CURRENT_SAVE_VERSION = 8;
-const defaultStatusMessage = '달팽이를 눌러 고르거나, 먹이를 골라 테라리움에 떨어뜨려 주세요.';
+const defaultStatusMessage = '달팽이를 눌러 반응을 보거나, 먹이 점을 원하는 자리에 놓아 주세요.';
 const fallbackTerrarium = starterTerrariums[0]!;
 const motionTickMs = 120;
 const clockTickMs = 1000;
@@ -96,12 +84,6 @@ const eatingReactionMs = 1800;
 const foodDropLifetimeMs = 30_000;
 const maximumSelection = 2;
 const eggClusterColumns = 4;
-
-const rarityToneLabel = {
-  common: '기본',
-  rare: '레어',
-  epic: '에픽'
-} as const;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -241,6 +223,7 @@ function sanitizeOwnedSnail(
     starter: Boolean(maybeSnail.starter)
   };
 }
+
 function sanitizeEgg(
   candidate: unknown,
   fallbackId: string,
@@ -291,7 +274,7 @@ function normalizeBreedingSelection(storedSelection: unknown, snails: OwnedSnail
   const parentAId = typeof maybeSelection.parentAId === 'string' && snailIds.has(maybeSelection.parentAId)
     ? maybeSelection.parentAId
     : null;
-  const parentBId = typeof maybeSelection.parentBId === 'string' && snailIds.has(maybeSelection.parentBId) && maybeSelection.parentBId !== parentAId
+  const parentBId = typeof maybeSelection.parentBId === 'string' && snailIds.has(maybeSelection.parentBId) && maybeSelection.parentBId != parentAId
     ? maybeSelection.parentBId
     : null;
 
@@ -361,10 +344,7 @@ function normalizeStoredState(stored: Partial<StoredGameState> | null): StoredGa
   return {
     saveVersion: CURRENT_SAVE_VERSION,
     selectedSnailId,
-    selectedTerrariumId:
-      typeof stored.selectedTerrariumId === 'string' && terrariumIds.has(stored.selectedTerrariumId)
-        ? stored.selectedTerrariumId
-        : fallbackTerrarium.id,
+    selectedTerrariumId: fallbackTerrarium.id,
     statusMessage:
       typeof stored.statusMessage === 'string' && stored.statusMessage.trim()
         ? stored.statusMessage.trim()
@@ -418,6 +398,21 @@ function getBreedingRequirementText(selectedSnails: OwnedSnail[], growthLookup: 
   return null;
 }
 
+type TerrariumSnailProps = {
+  snail: OwnedSnail;
+  species: SnailSpecies;
+  growth: GrowthProfile;
+  motion: SnailMotion;
+  selected: boolean;
+  focused: boolean;
+  touched: boolean;
+  eating: boolean;
+  breeding: boolean;
+  selectionOrder: number;
+  clickDisabled: boolean;
+  onSelect: (snailId: string) => void;
+};
+
 function TerrariumSnail({
   snail,
   species,
@@ -428,6 +423,7 @@ function TerrariumSnail({
   touched,
   eating,
   breeding,
+  selectionOrder,
   clickDisabled,
   onSelect
 }: TerrariumSnailProps) {
@@ -472,6 +468,7 @@ function TerrariumSnail({
         disabled={clickDisabled}
         aria-label={`${snail.name} 선택`}
       >
+        {selectionOrder > 0 ? <span className="snail-select-order">{selectionOrder}</span> : null}
         <span className="snail-shell">
           <span className="snail-shell__rim" />
           <span className="snail-shell__spiral" />
@@ -497,20 +494,15 @@ function App() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [motionMap, setMotionMap] = useState<Record<string, SnailMotion>>({});
   const [foodDrops, setFoodDrops] = useState<FoodDrop[]>([]);
-  const [shopOpen, setShopOpen] = useState(false);
-  const [feedMenuOpen, setFeedMenuOpen] = useState(false);
   const [activeFoodType, setActiveFoodType] = useState<FoodType | null>(null);
+  const [interactionMode, setInteractionMode] = useState<InteractionMode>('observe');
   const [saleQuote, setSaleQuote] = useState<SaleQuote | null>(null);
   const [manualSaveInfo, setManualSaveInfo] = useState<ManualSaveSlot | null>(() => loadManualSaveSlot());
   const [breedingEffect, setBreedingEffect] = useState<{ ids: string[]; until: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
+
   const speciesLookup = useMemo(
     () => Object.fromEntries(snailSpecies.map((species) => [species.id, species])) as Record<string, SnailSpecies>,
-    []
-  );
-
-  const terrariumLookup = useMemo(
-    () => Object.fromEntries(starterTerrariums.map((terrarium) => [terrarium.id, terrarium])),
     []
   );
 
@@ -524,20 +516,26 @@ function App() {
     [gameState.ownedSnails, now]
   );
 
-  const selectedTerrarium = terrariumLookup[gameState.selectedTerrariumId] ?? fallbackTerrarium;
+  const selectedTerrarium = fallbackTerrarium;
   const selectedSnails = selectedIds.map((id) => ownedSnailLookup[id]).filter((snail): snail is OwnedSnail => Boolean(snail));
-  const focusedSnail = ownedSnailLookup[selectedIds[selectedIds.length - 1] ?? gameState.selectedSnailId] ?? gameState.ownedSnails[0] ?? null;
+  const focusedSnail = ownedSnailLookup[gameState.selectedSnailId] ?? gameState.ownedSnails[0] ?? null;
   const focusedGrowth = focusedSnail ? growthLookup[focusedSnail.id] : null;
   const soonestEgg = gameState.eggs[0] ?? null;
   const breedingRequirementText = getBreedingRequirementText(selectedSnails, growthLookup, now);
   const breedingPreview = selectedSnails.length === 2 && !breedingRequirementText
     ? getBreedingPreview(selectedSnails[0]!, selectedSnails[1]! )
     : null;
-  const salePreviewTotal = selectedSnails.reduce((sum, snail) => sum + getSnailSaleValue(snail, growthLookup[snail.id]!), 0);
   const breedingIds = useMemo(
     () => new Set((breedingEffect && breedingEffect.until > now) ? breedingEffect.ids : []),
     [breedingEffect, now]
   );
+  const modeLabel = activeFoodType
+    ? `${foodCatalog[activeFoodType].label} 점 놓기`
+    : interactionMode === 'breed'
+      ? '교배할 두 마리를 차례로 눌러 주세요.'
+      : interactionMode === 'sell'
+        ? '판매할 달팽이를 눌러 주세요.'
+        : gameState.statusMessage;
 
   useEffect(() => {
     setMotionMap((previous) => syncMotionMap(previous, gameState.ownedSnails));
@@ -547,32 +545,23 @@ function App() {
     const ownedIds = new Set(gameState.ownedSnails.map((snail) => snail.id));
     setSelectedIds((previous) => {
       const filtered = previous.filter((id) => ownedIds.has(id)).slice(0, maximumSelection);
-      if (filtered.length > 0) {
-        return arraysEqual(filtered, previous) ? previous : filtered;
-      }
-
-      const fallback = gameState.selectedSnailId && ownedIds.has(gameState.selectedSnailId)
-        ? [gameState.selectedSnailId]
-        : gameState.ownedSnails[0]
-          ? [gameState.ownedSnails[0].id]
-          : [];
-
-      return arraysEqual(previous, fallback) ? previous : fallback;
+      return arraysEqual(previous, filtered) ? previous : filtered;
     });
+
+    if (!gameState.ownedSnails.some((snail) => snail.id === gameState.selectedSnailId)) {
+      setGameState((previous) => ({
+        ...previous,
+        selectedSnailId: previous.ownedSnails[0]?.id ?? ''
+      }));
+    }
   }, [gameState.ownedSnails, gameState.selectedSnailId]);
 
   useEffect(() => {
     const parentAId = selectedIds[0] ?? null;
     const parentBId = selectedIds[1] ?? null;
-    const focusId = selectedIds[selectedIds.length - 1] ?? gameState.selectedSnailId;
 
     setGameState((previous) => {
-      const nextFocusId = focusId && previous.ownedSnails.some((snail) => snail.id === focusId)
-        ? focusId
-        : previous.ownedSnails[0]?.id ?? '';
-
       if (
-        previous.selectedSnailId === nextFocusId &&
         previous.breedingSelection.parentAId === parentAId &&
         previous.breedingSelection.parentBId === parentBId
       ) {
@@ -581,19 +570,19 @@ function App() {
 
       return {
         ...previous,
-        selectedSnailId: nextFocusId,
         breedingSelection: {
           parentAId,
           parentBId
         }
       };
     });
-  }, [selectedIds, gameState.selectedSnailId]);
+  }, [selectedIds]);
 
   useEffect(() => {
     saveStoredGameState({
       ...gameState,
-      saveVersion: CURRENT_SAVE_VERSION
+      saveVersion: CURRENT_SAVE_VERSION,
+      selectedTerrariumId: fallbackTerrarium.id
     });
   }, [gameState]);
 
@@ -626,12 +615,11 @@ function App() {
         ...previous,
         eggs: previous.eggs.filter((egg) => egg.hatchAt > currentTime),
         ownedSnails: [...previous.ownedSnails, ...hatchlings],
+        selectedSnailId: previous.selectedSnailId || hatchlings[0]?.id || '',
         statusMessage: hatchlings.length === 1
           ? `${hatchlings[0]!.name}이 깨어났어요.`
           : `${hatchlings.length}마리의 새끼 달팽이가 깨어났어요.`
       }));
-
-      setSelectedIds((previous) => previous.length > 0 ? previous : [hatchlings[hatchlings.length - 1]!.id]);
     });
   });
 
@@ -718,6 +706,7 @@ function App() {
     const nextFoodDrops = consumedDrops.size > 0 || liveFoodDrops.length !== foodDrops.length
       ? liveFoodDrops.filter((drop) => !consumedDrops.has(drop.id))
       : foodDrops;
+
     startTransition(() => {
       setMotionMap(nextMotionMap);
       if (nextFoodDrops !== foodDrops) {
@@ -752,7 +741,7 @@ function App() {
             };
           }),
           statusMessage: targetSnailName && targetFoodType
-            ? `${targetSnailName}가 ${foodCatalog[targetFoodType].label}을 먹었어요.`
+            ? `${targetSnailName}가 ${foodCatalog[targetFoodType].label} 점을 먹었어요.`
             : '달팽이가 먹이를 먹었어요.'
         }));
       }
@@ -781,41 +770,11 @@ function App() {
     setGameState((previous) => previous.statusMessage === message ? previous : { ...previous, statusMessage: message });
   };
 
-  const handleSnailSelect = (snailId: string): void => {
-    snailSounds.playSoftSelect();
-    setSaleQuote(null);
-    setSelectedIds((previous) => getSelectionAfterToggle(previous, snailId));
-    const snail = ownedSnailLookup[snailId];
-    if (snail) {
-      const profile = growthLookup[snailId];
-      setStatusMessage(profile ? `${snail.name} · ${profile.label}` : `${snail.name}을 골랐어요.`);
-    }
-  };
-
-  const clearSelection = (): void => {
-    snailSounds.playUiTap();
-    setSelectedIds([]);
-    setSaleQuote(null);
-    setStatusMessage('선택을 비웠어요.');
-  };
-
-  const handleTouchSelected = (): void => {
-    const targetId = selectedIds[selectedIds.length - 1] ?? focusedSnail?.id ?? null;
-    if (!targetId) {
-      snailSounds.playBlocked();
-      setStatusMessage('먼저 달팽이를 골라 주세요.');
-      return;
-    }
-
-    const target = ownedSnailLookup[targetId];
-    if (!target) {
-      return;
-    }
-
+  const triggerTouchReaction = (snailId: string): void => {
     snailSounds.playTouchAction();
     setMotionMap((previous) => {
       const next = syncMotionMap(previous, gameState.ownedSnails);
-      const motion = next[targetId];
+      const motion = next[snailId];
       if (motion) {
         motion.reaction = 'touch';
         motion.reactionUntil = Date.now() + touchReactionMs;
@@ -826,53 +785,85 @@ function App() {
       }
       return next;
     });
-    setStatusMessage(`${target.name}가 더듬이를 움찔했어요.`);
   };
 
-  const handleToggleShop = (): void => {
-    snailSounds.playUiTap();
-    setFeedMenuOpen(false);
+  const resetModes = (nextStatus?: string): void => {
+    setInteractionMode('observe');
     setActiveFoodType(null);
-    setShopOpen((previous) => !previous);
+    setSelectedIds([]);
+    if (nextStatus) {
+      setStatusMessage(nextStatus);
+    }
   };
 
-  const handleToggleFeed = (): void => {
-    snailSounds.playUiTap();
-    setShopOpen(false);
-    setFeedMenuOpen((previous) => {
-      const next = !previous;
-      if (!next) {
-        setActiveFoodType(null);
-        setStatusMessage('먹이 모드를 닫았어요.');
-      } else {
-        setStatusMessage('먹이를 고른 뒤 테라리움을 눌러 주세요.');
-      }
-      return next;
-    });
+  const handleSnailSelect = (snailId: string): void => {
+    const snail = ownedSnailLookup[snailId];
+    if (!snail) {
+      return;
+    }
+
+    setGameState((previous) => previous.selectedSnailId === snailId ? previous : { ...previous, selectedSnailId: snailId });
+
+    if (interactionMode === 'sell') {
+      const quote = getSnailSaleValue(snail, growthLookup[snailId]!);
+      snailSounds.playSoftSelect();
+      setSaleQuote({ ids: [snailId], total: quote });
+      setStatusMessage(`${snail.name} 판매 가격 ${formatCurrency(quote)}`);
+      return;
+    }
+
+    if (interactionMode === 'breed') {
+      snailSounds.playSoftSelect();
+      setSelectedIds((previous) => {
+        const next = getSelectionAfterToggle(previous, snailId);
+        if (next.length === 0) {
+          setStatusMessage('교배할 첫 번째 달팽이를 골라 주세요.');
+        } else if (next.length === 1) {
+          setStatusMessage(`${snail.name}를 첫 부모로 골랐어요.`);
+        } else {
+          const leftId = next[0];
+          const rightId = next[1];
+          const leftName = leftId ? ownedSnailLookup[leftId]?.name ?? '첫 번째' : '첫 번째';
+          const rightName = rightId ? ownedSnailLookup[rightId]?.name ?? '두 번째' : '두 번째';
+          setStatusMessage(`${leftName}와 ${rightName}를 교배할 수 있어요.`);
+        }
+        return next;
+      });
+      return;
+    }
+
+    triggerTouchReaction(snailId);
+    setStatusMessage(`${snail.name}가 더듬이를 움찔했어요.`);
   };
 
   const handleChooseFoodType = (foodType: FoodType): void => {
+    if (activeFoodType === foodType) {
+      setActiveFoodType(null);
+      setStatusMessage('먹이 선택을 닫았어요.');
+      return;
+    }
+
     if (gameState.foodInventory[foodType] <= 0) {
       snailSounds.playBlocked();
-      setStatusMessage(`${foodCatalog[foodType].label}이 부족해요.`);
+      setStatusMessage(`${foodCatalog[foodType].label}이 부족해요. 아래 충전 버튼으로 채워 주세요.`);
       return;
     }
 
     snailSounds.playSoftSelect();
+    setInteractionMode('observe');
+    setSelectedIds([]);
     setActiveFoodType(foodType);
-    setStatusMessage(`${foodCatalog[foodType].label}을 놓을 자리를 눌러 주세요.`);
+    setStatusMessage(`${foodCatalog[foodType].label} 점을 놓을 자리를 터치하세요.`);
   };
 
   const handleTerrariumClick = (event: ReactMouseEvent<HTMLDivElement>): void => {
     if (!activeFoodType) {
-      setSelectedIds([]);
-      setSaleQuote(null);
       return;
     }
 
     if (gameState.foodInventory[activeFoodType] <= 0) {
       snailSounds.playBlocked();
-      setStatusMessage(`${foodCatalog[activeFoodType].label}이 없어서 놓을 수 없어요.`);
+      setStatusMessage(`${foodCatalog[activeFoodType].label}이 부족해요.`);
       return;
     }
 
@@ -897,7 +888,7 @@ function App() {
         ...previous.foodInventory,
         [activeFoodType]: Math.max(0, previous.foodInventory[activeFoodType] - 1)
       },
-      statusMessage: `${option.label}을 내려놓았어요.`
+      statusMessage: `${option.label} 점을 놓았어요.`
     }));
   };
 
@@ -910,6 +901,8 @@ function App() {
     }
 
     snailSounds.playUiTap();
+    setInteractionMode('observe');
+    setActiveFoodType(foodType);
     setGameState((previous) => ({
       ...previous,
       balance: previous.balance - bundle.cost,
@@ -917,22 +910,38 @@ function App() {
         ...previous.foodInventory,
         [foodType]: previous.foodInventory[foodType] + bundle.quantity
       },
-      statusMessage: `${bundle.label}을 샀어요.`
+      statusMessage: `${bundle.label}을 채웠어요. 원하는 곳에 바로 놓아 보세요.`
     }));
   };
 
-  const handleChangeTerrarium = (terrariumId: string): void => {
-    if (terrariumId === gameState.selectedTerrariumId) {
+  const handleToggleBreedMode = (): void => {
+    if (interactionMode === 'breed') {
+      resetModes('교배 선택을 닫았어요.');
       return;
     }
 
-    snailSounds.playSoftSelect();
-    setGameState((previous) => ({
-      ...previous,
-      selectedTerrariumId: terrariumId,
-      statusMessage: `${terrariumLookup[terrariumId]?.name ?? '테라리움'}으로 옮겨 봤어요.`
-    }));
+    snailSounds.playUiTap();
+    setInteractionMode('breed');
+    setActiveFoodType(null);
+    setSaleQuote(null);
+    setSelectedIds([]);
+    setStatusMessage('교배할 달팽이 두 마리를 차례로 눌러 주세요.');
   };
+
+  const handleToggleSellMode = (): void => {
+    if (interactionMode === 'sell') {
+      resetModes('교배 선택을 닫았어요.');
+      return;
+    }
+
+    snailSounds.playUiTap();
+    setInteractionMode('sell');
+    setActiveFoodType(null);
+    setSelectedIds([]);
+    setSaleQuote(null);
+    setStatusMessage('판매할 달팽이를 눌러 가격을 확인하세요.');
+  };
+
   const handleBreedSelected = (): void => {
     if (breedingRequirementText || selectedSnails.length !== 2) {
       snailSounds.playBlocked();
@@ -941,7 +950,7 @@ function App() {
     }
 
     const [parentA, parentB] = selectedSnails;
-    const breedingResult = createEggFromParents(parentA!, parentB!, gameState.selectedTerrariumId);
+    const breedingResult = createEggFromParents(parentA!, parentB!, fallbackTerrarium.id);
     const currentTime = Date.now();
 
     snailSounds.playBreedingStart();
@@ -968,6 +977,8 @@ function App() {
       }
       return next;
     });
+    setSelectedIds([]);
+    setInteractionMode('observe');
     setGameState((previous) => ({
       ...previous,
       eggs: [...previous.eggs, breedingResult.egg].sort((left, right) => left.hatchAt - right.hatchAt),
@@ -978,20 +989,6 @@ function App() {
       )),
       statusMessage: `${parentA!.name}와 ${parentB!.name} 사이에 알이 생겼어요.`
     }));
-  };
-
-  const handleOpenSaleQuote = (): void => {
-    if (selectedSnails.length === 0) {
-      snailSounds.playBlocked();
-      setStatusMessage('판매할 달팽이를 먼저 골라 주세요.');
-      return;
-    }
-
-    setSaleQuote({
-      ids: selectedSnails.map((snail) => snail.id),
-      total: salePreviewTotal
-    });
-    snailSounds.playUiTap();
   };
 
   const handleConfirmSale = (): void => {
@@ -1018,8 +1015,9 @@ function App() {
 
     snailSounds.playUiTap();
     setSaleQuote(null);
+    setInteractionMode('observe');
     setFoodDrops([]);
-    setSelectedIds(nextFocusId ? [nextFocusId] : []);
+    setSelectedIds([]);
     setGameState((previous) => ({
       ...previous,
       balance: previous.balance + saleQuote.total,
@@ -1036,7 +1034,8 @@ function App() {
   const handleSaveGame = (): void => {
     const snapshot = cloneStoredState({
       ...gameState,
-      saveVersion: CURRENT_SAVE_VERSION
+      saveVersion: CURRENT_SAVE_VERSION,
+      selectedTerrariumId: fallbackTerrarium.id
     });
     const slot = {
       savedAt: Date.now(),
@@ -1060,65 +1059,21 @@ function App() {
     const restored = normalizeStoredState(slot.state);
     setManualSaveInfo(slot);
     setSaleQuote(null);
-    setShopOpen(false);
-    setFeedMenuOpen(false);
+    setInteractionMode('observe');
+    setSelectedIds([]);
     setActiveFoodType(null);
     setFoodDrops([]);
     setMotionMap(syncMotionMap({}, restored.ownedSnails));
     setGameState({
       ...restored,
+      selectedTerrariumId: fallbackTerrarium.id,
       statusMessage: `세이브를 불러왔어요 · ${formatSavedAt(slot.savedAt)}`
     });
-    setSelectedIds(restored.selectedSnailId ? [restored.selectedSnailId] : []);
     snailSounds.playUiTap();
   };
 
   return (
     <div className={`koi-shell koi-shell--${selectedTerrarium.id}`}>
-      <header className="hud-row">
-        <div className="resource-strip">
-          <div className="hud-chip">
-            <span>머니</span>
-            <strong>{formatCurrency(gameState.balance)}</strong>
-          </div>
-          <div className="hud-chip">
-            <span>오이</span>
-            <strong>{gameState.foodInventory.cucumber}</strong>
-          </div>
-          <div className="hud-chip">
-            <span>당근</span>
-            <strong>{gameState.foodInventory.carrot}</strong>
-          </div>
-          <div className="hud-chip">
-            <span>알</span>
-            <strong>{gameState.eggs.length}</strong>
-            {soonestEgg ? <em>{formatShortDuration(soonestEgg.hatchAt - now)}</em> : null}
-          </div>
-        </div>
-
-        <div className="hud-tools">
-          <div className="theme-switcher" role="tablist" aria-label="테라리움 배경 선택">
-            {starterTerrariums.map((terrarium) => (
-              <button
-                key={terrarium.id}
-                type="button"
-                className={terrarium.id === selectedTerrarium.id ? 'is-active' : ''}
-                onClick={() => handleChangeTerrarium(terrarium.id)}
-              >
-                {terrarium.name}
-              </button>
-            ))}
-          </div>
-
-          <button type="button" className="tool-pill" onClick={handleSaveGame}>
-            세이브
-          </button>
-          <button type="button" className="tool-pill" onClick={handleLoadGame}>
-            불러오기
-          </button>
-        </div>
-      </header>
-
       <main className={`terrarium-stage terrarium-stage--${selectedTerrarium.id} ${activeFoodType ? 'is-feed-mode' : ''}`} onClick={handleTerrariumClick}>
         <div className="terrarium-fog" />
         <div className="terrarium-shine" />
@@ -1133,13 +1088,15 @@ function App() {
         <div className="terrain-leaf terrain-leaf--one" />
         <div className="terrain-leaf terrain-leaf--two" />
         <div className="terrain-leaf terrain-leaf--three" />
-        <div className="scene-caption">{gameState.statusMessage}</div>
-        <div className="scene-mood">{selectedTerrarium.mood}</div>
-        {activeFoodType ? (
-          <div className="feed-cursor-hint">
-            {foodCatalog[activeFoodType].label} 놓기
-          </div>
-        ) : null}
+        <div className="brand-floating">
+          <strong>달팽이 농장</strong>
+          <span>tipsysnail garden</span>
+        </div>
+        <div className="balance-floating">{formatCurrency(gameState.balance)}</div>
+        <div className="scene-caption">{modeLabel}</div>
+        {activeFoodType ? <div className="feed-cursor-hint">{foodCatalog[activeFoodType].label}</div> : null}
+        {interactionMode === 'sell' ? <div className="mode-pill mode-pill--sell">판매 모드</div> : null}
+        {interactionMode === 'breed' ? <div className="mode-pill mode-pill--breed">교배 모드</div> : null}
         {breedingEffect && breedingEffect.until > now ? <div className="breeding-bloom" /> : null}
 
         <div className="egg-cluster" aria-label="달팽이 알">
@@ -1155,19 +1112,14 @@ function App() {
           })}
         </div>
 
-        <div className="food-layer" aria-label="놓인 먹이">
+        <div className="food-layer" aria-label="놓인 먹이 점">
           {foodDrops.map((drop) => {
             const dropStyle = {
               left: `${drop.x}%`,
               top: `${drop.y}%`
             } satisfies CSSProperties;
 
-            return (
-              <span key={drop.id} className={`food-drop food-drop--${drop.type}`} style={dropStyle}>
-                <span className="food-drop__piece" />
-                <span className="food-drop__leaf" />
-              </span>
-            );
+            return <span key={drop.id} className={`food-drop food-drop--${drop.type}`} style={dropStyle} />;
           })}
         </div>
 
@@ -1177,7 +1129,8 @@ function App() {
             const growth = growthLookup[snail.id] ?? getGrowthProfile(snail, now);
             const species = speciesLookup[snail.speciesId] ?? snailSpecies[0]!;
             const isFocused = focusedSnail?.id === snail.id;
-            const isSelected = selectedIds.includes(snail.id);
+            const selectionOrder = selectedIds.indexOf(snail.id) + 1;
+            const isSelected = selectionOrder > 0;
             const isTouched = motion.reaction === 'touch' && motion.reactionUntil > now;
             const isEating = motion.reaction === 'eat' && motion.reactionUntil > now;
             const isBreeding = breedingIds.has(snail.id) || (motion.reaction === 'breed' && motion.reactionUntil > now);
@@ -1194,139 +1147,80 @@ function App() {
                 touched={isTouched}
                 eating={isEating}
                 breeding={isBreeding}
+                selectionOrder={selectionOrder}
                 clickDisabled={Boolean(activeFoodType)}
                 onSelect={handleSnailSelect}
               />
             );
           })}
         </div>
+
+        {interactionMode === 'breed' ? (
+          <section className="mode-overlay mode-overlay--breed" onClick={(event) => event.stopPropagation()}>
+            <div className="mode-overlay__names">
+              <span>{selectedSnails[0]?.name ?? '첫 번째 달팽이'}</span>
+              <span>{selectedSnails[1]?.name ?? '두 번째 달팽이'}</span>
+            </div>
+            <div className="mode-overlay__hint">
+              {breedingPreview
+                ? `레어 ${Math.round(breedingPreview.rareChance * 100)}% · 부화 ${formatShortDuration(breedingPreview.hatchDurationMs)}`
+                : breedingRequirementText ?? '두 마리를 고르면 바로 교배할 수 있어요.'}
+            </div>
+            <div className="mode-overlay__actions">
+              <button type="button" className="action-button action-button--ghost" onClick={() => resetModes('교배 선택을 취소했어요.')}>취소</button>
+              <button type="button" className="action-button" onClick={handleBreedSelected} disabled={Boolean(breedingRequirementText)}>교배 시작</button>
+            </div>
+          </section>
+        ) : null}
       </main>
 
-      {feedMenuOpen ? (
-        <section className="feed-palette" aria-label="먹이 선택">
+      <section className="control-ribbon">
+        <div className="supply-rack">
           {(Object.keys(foodCatalog) as FoodType[]).map((foodType) => {
             const option = foodCatalog[foodType];
-            const remaining = gameState.foodInventory[foodType];
+            const bundle = foodShopBundles[foodType];
             const selected = activeFoodType === foodType;
 
             return (
-              <button
-                key={foodType}
-                type="button"
-                className={selected ? 'is-active' : ''}
-                onClick={() => handleChooseFoodType(foodType)}
-              >
-                <span>{option.label}</span>
-                <strong>{remaining}</strong>
-                <small>+{option.growthGain}</small>
-              </button>
-            );
-          })}
-        </section>
-      ) : null}
-
-      <section className={`selection-tray ${selectedSnails.length > 0 ? 'has-selection' : ''}`}>
-        <div className="selection-cards">
-          {selectedSnails.length > 0 ? selectedSnails.map((snail) => {
-            const growth = growthLookup[snail.id]!;
-            const rarity = getSpeciesRarityLabel(snail.speciesId);
-            const cooldownMs = Math.max(0, snail.cooldownUntil - now);
-            const progressPercent = (growth.growthPoints / adultGrowthGoalPoints) * 100;
-
-            return (
-              <article key={snail.id} className={`selection-card rarity-${rarity}`}>
-                <div className="selection-card__topline">
-                  <span className="selection-dot" style={{ background: snail.accent }} />
-                  <strong>{snail.name}</strong>
-                  <em>{rarityToneLabel[rarity]}</em>
-                </div>
-                <div className="selection-card__meta">
-                  <span>{growth.label}</span>
-                  <span>{formatCurrency(getSnailSaleValue(snail, growth))}</span>
-                </div>
-                <div className="selection-card__progress">
-                  <span style={{ width: `${Math.min(100, progressPercent)}%` }} />
-                </div>
-                {cooldownMs > 0 ? <small>교배 대기 {formatShortDuration(cooldownMs)}</small> : null}
+              <article key={foodType} className={`supply-card supply-card--${foodType} ${selected ? 'is-active' : ''}`}>
+                <button type="button" className="supply-card__pick" onClick={() => handleChooseFoodType(foodType)}>
+                  <span className={`supply-dot supply-dot--${foodType}`} />
+                  <strong>{option.label}</strong>
+                  <em>{gameState.foodInventory[foodType]}</em>
+                </button>
+                <button type="button" className="supply-card__buy" onClick={() => handleBuyBundle(foodType)}>
+                  {bundle.quantity > 1 ? `+${bundle.quantity}` : '+1'} · {formatCurrency(bundle.cost)}
+                </button>
               </article>
             );
-          }) : (
-            <div className="selection-empty">
-              <strong>선택 없음</strong>
-              <span>달팽이를 눌러 고르면 교배와 판매가 열려요.</span>
-            </div>
-          )}
+          })}
         </div>
 
-        <div className="selection-actions">
-          <button type="button" className="action-button action-button--ghost" onClick={handleOpenSaleQuote} disabled={selectedSnails.length === 0}>
-            판매 {selectedSnails.length > 0 ? formatCurrency(salePreviewTotal) : ''}
-          </button>
-          <button type="button" className="action-button" onClick={handleBreedSelected} disabled={Boolean(breedingRequirementText)}>
-            교배
-          </button>
-          <div className="selection-hint">
-            {breedingPreview ? (
-              <span>
-                레어 {Math.round(breedingPreview.rareChance * 100)}% · 부화 {formatShortDuration(breedingPreview.hatchDurationMs)}
-              </span>
-            ) : (
-              <span>{breedingRequirementText ?? '두 마리를 고르면 레어 확률을 볼 수 있어요.'}</span>
-            )}
-          </div>
+        <div className="mode-rack">
+          <button type="button" className={interactionMode === 'breed' ? 'is-active' : ''} onClick={handleToggleBreedMode}>교배</button>
+          <button type="button" className={interactionMode === 'sell' ? 'is-active' : ''} onClick={handleToggleSellMode}>판매</button>
+          <button type="button" onClick={handleSaveGame}>세이브</button>
+          <button type="button" onClick={handleLoadGame}>불러오기</button>
         </div>
       </section>
 
-      <nav className="bottom-dock" aria-label="메인 액션">
-        <button type="button" className={shopOpen ? 'is-active' : ''} onClick={handleToggleShop}>
-          상점
-        </button>
-        <button type="button" className={feedMenuOpen ? 'is-active' : ''} onClick={handleToggleFeed}>
-          먹이
-        </button>
-        <button type="button" onClick={handleTouchSelected} disabled={!focusedSnail}>
-          터치
-        </button>
-        <button type="button" onClick={clearSelection}>
-          해제
-        </button>
-      </nav>
-
-      {shopOpen ? (
-        <div className="overlay-backdrop" role="presentation" onClick={() => setShopOpen(false)}>
-          <section className="shop-modal" role="dialog" aria-modal="true" aria-label="먹이 상점" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-head">
-              <strong>먹이 상점</strong>
-              <button type="button" onClick={() => setShopOpen(false)}>
-                닫기
-              </button>
-            </div>
-            <div className="shop-grid">
-              {(Object.keys(foodShopBundles) as FoodType[]).map((foodType) => {
-                const bundle = foodShopBundles[foodType];
-                const option = foodCatalog[foodType];
-                const affordable = gameState.balance >= bundle.cost;
-
-                return (
-                  <article key={foodType} className={`shop-card shop-card--${foodType}`}>
-                    <div>
-                      <strong>{bundle.label}</strong>
-                      <p>{bundle.description}</p>
-                    </div>
-                    <div className="shop-card__stats">
-                      <span>+{bundle.quantity}개</span>
-                      <span>성장 {option.growthGain}</span>
-                    </div>
-                    <button type="button" onClick={() => handleBuyBundle(foodType)} disabled={!affordable}>
-                      {formatCurrency(bundle.cost)}
-                    </button>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-      ) : null}
+      <section className="focus-strip">
+        {focusedSnail && focusedGrowth ? (
+          <>
+            <strong>{focusedSnail.name}</strong>
+            <span>{focusedGrowth.label} · 성장 {focusedGrowth.growthPoints}/{adultGrowthGoalPoints}</span>
+            {soonestEgg ? <em>알 {gameState.eggs.length} · {formatShortDuration(soonestEgg.hatchAt - now)}</em> : null}
+            {manualSaveInfo ? <em>세이브 {formatSavedAt(manualSaveInfo.savedAt)}</em> : null}
+          </>
+        ) : (
+          <>
+            <strong>달팽이 농장</strong>
+            <span>달팽이를 눌러 반응을 보거나 먹이 점을 내려놓아 보세요.</span>
+            {soonestEgg ? <em>알 {gameState.eggs.length} · {formatShortDuration(soonestEgg.hatchAt - now)}</em> : null}
+            {manualSaveInfo ? <em>세이브 {formatSavedAt(manualSaveInfo.savedAt)}</em> : null}
+          </>
+        )}
+      </section>
 
       {saleQuote ? (
         <div className="overlay-backdrop" role="presentation" onClick={() => setSaleQuote(null)}>
@@ -1347,29 +1241,9 @@ function App() {
           </section>
         </div>
       ) : null}
-
-      <footer className="footer-strip">
-        <div>
-          {focusedSnail && focusedGrowth ? (
-            <>
-              <strong>{focusedSnail.name}</strong>
-              <span>
-                {focusedGrowth.label} · 성장 {focusedGrowth.growthPoints}/{adultGrowthGoalPoints}
-              </span>
-            </>
-          ) : (
-            <>
-              <strong>{selectedTerrarium.name}</strong>
-              <span>{selectedTerrarium.description}</span>
-            </>
-          )}
-        </div>
-        <div>
-          {manualSaveInfo ? `최근 세이브 ${formatSavedAt(manualSaveInfo.savedAt)}` : '세이브 없음'}
-        </div>
-      </footer>
     </div>
   );
 }
 
 export default App;
+
