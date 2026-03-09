@@ -33,7 +33,7 @@ const rarityTierLookup: Record<string, number> = {
 const starterSnails: OwnedSnail[] = [
   {
     id: 'starter-garden-snail',
-    name: '이슬',
+    name: '장원영',
     speciesId: 'garden-snail',
     accent: '#c47a3b',
     patternLabel: '정원 소용돌이',
@@ -44,7 +44,7 @@ const starterSnails: OwnedSnail[] = [
   },
   {
     id: 'starter-amber-snail',
-    name: '꿀단지',
+    name: '카리나',
     speciesId: 'amber-snail',
     accent: '#e1a64b',
     patternLabel: '호박 물결',
@@ -55,7 +55,7 @@ const starterSnails: OwnedSnail[] = [
   },
   {
     id: 'starter-moss-snail',
-    name: '모스',
+    name: '제니',
     speciesId: 'moss-snail',
     accent: '#71935a',
     patternLabel: '이끼 줄무늬',
@@ -66,7 +66,29 @@ const starterSnails: OwnedSnail[] = [
   }
 ];
 
-const nameSeeds = ['별', '도토리', '이슬', '모래', '비누', '풀잎', '유리', '달빛', '콩알', '방울'];
+const idolNamePool = [
+  '장원영',
+  '제니',
+  '카리나',
+  '리사',
+  '로제',
+  '안유진',
+  '윈터',
+  '원희',
+  '지수',
+  '화사',
+  '태연',
+  '김채원',
+  '설윤',
+  '리즈',
+  '레이',
+  '나연',
+  '윤아',
+  '슬기',
+  '사나',
+  '이서'
+];
+
 const patternPrefixes = ['이슬', '정원', '비창', '은빛', '클로버', '노을', '별빛', '유리'];
 const patternSuffixes = ['소용돌이', '줄무늬', '점무늬', '물결', '반짝', '고리'];
 
@@ -302,10 +324,16 @@ function createPatternLabel(generation: number): string {
   return `${prefix} ${suffix}`;
 }
 
-function createSnailName(speciesName: string, collectionSize: number): string {
-  const seed = nameSeeds[collectionSize % nameSeeds.length]!;
-  const shortSpeciesName = speciesName.replace(' Snail', '').replace('Snail', '').trim();
-  return `${seed}${collectionSize + 1} ${shortSpeciesName}`.trim();
+function createSnailName(_speciesName: string, collectionSize: number): string {
+  const index = Math.max(0, collectionSize);
+  const baseName = idolNamePool[index % idolNamePool.length]!;
+  const cycle = Math.floor(index / idolNamePool.length);
+
+  if (cycle === 0) {
+    return baseName;
+  }
+
+  return `${baseName} ${cycle + 1}`;
 }
 
 export function createStarterSnailCollection(): OwnedSnail[] {

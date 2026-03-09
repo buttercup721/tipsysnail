@@ -2515,6 +2515,186 @@ img {
   margin-top: 0;
 }
 
+
+.terrarium-focus-layout {
+  display: grid;
+}
+
+.terrarium-panel--focused {
+  gap: 14px;
+  padding: 18px;
+}
+
+.terrarium-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.terrarium-switcher--compact {
+  grid-template-columns: repeat(2, minmax(0, 170px));
+  gap: 8px;
+}
+
+.terrarium-tab--compact {
+  min-height: 0;
+  padding: 12px 14px;
+}
+
+.terrarium-chipbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.terrarium-panel--focused .terrarium-scene--shared {
+  min-height: 520px;
+}
+
+.scene-caption--minimal {
+  right: auto;
+  bottom: 18px;
+  left: 18px;
+  gap: 2px;
+  padding: 10px 12px;
+  max-width: min(70%, 280px);
+}
+
+.scene-caption--minimal strong {
+  font-size: 0.98rem;
+}
+
+.scene-caption--minimal span {
+  font-size: 0.8rem;
+}
+
+.action-dock--minimal {
+  gap: 8px;
+}
+
+.action-dock--minimal .action-button {
+  min-height: 0;
+  padding: 13px 10px;
+}
+
+.action-dock--minimal .action-button strong {
+  font-size: 0.98rem;
+}
+
+.action-dock--minimal .action-button span {
+  display: none;
+}
+
+.selection-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.snail-strip--minimal {
+  grid-auto-columns: minmax(138px, 1fr);
+  gap: 8px;
+}
+
+.snail-pill--minimal {
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.snail-pill--minimal .snail-pill__accent {
+  width: 10px;
+  height: 24px;
+}
+
+.snail-pill__name {
+  color: #27402c;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.breed-tray {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(72, 106, 79, 0.12);
+}
+
+.breed-selects {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.breeding-button--compact {
+  white-space: nowrap;
+  padding-inline: 18px;
+}
+
+.breed-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mini-pill--soft {
+  background: rgba(95, 143, 97, 0.12);
+  color: #325239;
+}
+
+.egg-strip--minimal {
+  display: grid;
+  gap: 10px;
+}
+
+.egg-chip {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(78, 114, 81, 0.14);
+}
+
+.egg-chip--ready {
+  border-color: rgba(209, 176, 72, 0.34);
+}
+
+.egg-chip .egg-card__swatch {
+  width: 16px;
+  height: 42px;
+  margin: 0;
+}
+
+.egg-chip__copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.egg-chip__copy strong {
+  color: #26422c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.egg-chip__copy span {
+  color: #5b715d;
+  font-size: 0.82rem;
+}
+
+.egg-card__button--compact {
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
 .accordion-stack {
   display: grid;
   gap: 16px;
@@ -2842,6 +3022,484 @@ img {
   transform: translateX(-50%) scaleX(-1) rotate(-2deg);
 }
 
+
+.snail-figure {
+  width: 184px;
+  height: 108px;
+  transform-origin: 30% 82%;
+}
+
+.snail-figure--interactive {
+  cursor: default;
+}
+
+.snail-figure__inner {
+  pointer-events: none;
+  animation: snailWeightShift 10.8s ease-in-out infinite;
+}
+
+.snail-hitbox {
+  position: absolute;
+  left: 10px;
+  right: 2px;
+  bottom: 10px;
+  height: 82px;
+  z-index: 6;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  clip-path: polygon(3% 70%, 8% 36%, 22% 8%, 39% 4%, 55% 18%, 76% 20%, 95% 34%, 100% 58%, 86% 80%, 55% 96%, 18% 90%);
+}
+
+.snail-hitbox::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 50%, rgba(232, 244, 221, 0.26), rgba(232, 244, 221, 0));
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.snail-hitbox:hover::after,
+.snail-hitbox:focus-visible::after {
+  opacity: 1;
+}
+
+.snail-hitbox:focus-visible {
+  outline: none;
+}
+
+.snail-figure--selected .snail-hitbox::after {
+  opacity: 0.42;
+}
+
+.snail-trail-sheen {
+  position: absolute;
+  left: 86px;
+  bottom: 10px;
+  width: 104px;
+  height: 11px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(244, 255, 251, 0.78), rgba(255, 255, 255, 0));
+  filter: blur(5px);
+  opacity: calc(var(--snail-trail-opacity) * 0.72);
+  transform-origin: left center;
+  animation: trailShimmer 8.8s ease-in-out infinite;
+}
+
+.snail-shadow {
+  left: 42px;
+  bottom: 6px;
+  width: 104px;
+  height: 13px;
+  background: radial-gradient(circle at center, rgba(32, 41, 31, 0.26), rgba(32, 41, 31, 0));
+  filter: blur(8px);
+}
+
+.snail-shell {
+  left: 10px;
+  bottom: 24px;
+  width: calc(92px * var(--snail-shell-scale));
+  height: calc(76px * var(--snail-shell-scale));
+  border-radius: 58% 42% 52% 48% / 60% 64% 36% 40%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(255, 249, 232, 0.94), rgba(255, 249, 232, 0.18) 20%, transparent 20%),
+    radial-gradient(circle at 58% 64%, rgba(89, 54, 28, 0.2), transparent 42%),
+    linear-gradient(154deg, color-mix(in srgb, var(--shell-accent) 74%, #f3d7a2 26%), color-mix(in srgb, var(--shell-accent) 86%, #744e2d 14%));
+  box-shadow:
+    inset 11px 10px 16px rgba(255, 255, 255, 0.16),
+    inset -14px -12px 18px rgba(85, 57, 34, 0.22),
+    0 12px 22px rgba(55, 49, 35, 0.12);
+  animation: shellBreathe 12.8s ease-in-out infinite;
+}
+
+.snail-shell__glaze {
+  position: absolute;
+  inset: 10px 12px 22px 14px;
+  border-radius: 64% 36% 46% 54% / 56% 54% 46% 44%;
+  background: linear-gradient(140deg, rgba(255, 253, 245, 0.72), rgba(255, 253, 245, 0.12) 40%, transparent 68%);
+  transform: rotate(-17deg);
+  mix-blend-mode: screen;
+}
+
+.snail-shell__growth-ring {
+  position: absolute;
+  inset: 18px 20px 16px 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(117, 74, 41, 0.28);
+  border-right-color: transparent;
+  border-bottom-color: rgba(117, 74, 41, 0.12);
+  transform: rotate(-16deg);
+}
+
+.snail-shell__ridge {
+  border-color: rgba(102, 63, 32, 0.3);
+  border-top-color: rgba(255, 241, 214, 0.18);
+}
+
+.snail-body {
+  left: calc(68px - 9px * (1 - var(--snail-body-length)));
+  right: 6px;
+  bottom: 16px;
+  height: calc(40px * var(--snail-body-height));
+  border-radius: 28px 38px 20px 18px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(168, 180, 146, 0.98), rgba(109, 123, 93, 0.99)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 40%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -7px 11px rgba(78, 92, 70, 0.2);
+  animation: snailBodyFlow 9.2s ease-in-out infinite;
+}
+
+.snail-body__mottle {
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(75, 93, 69, 0.16);
+  filter: blur(1px);
+}
+
+.snail-body__mottle--a {
+  left: 18px;
+  top: 10px;
+  width: 34px;
+  height: 10px;
+}
+
+.snail-body__mottle--b {
+  left: 58px;
+  top: 18px;
+  width: 28px;
+  height: 9px;
+}
+
+.snail-body__mottle--c {
+  right: 20px;
+  top: 8px;
+  width: 22px;
+  height: 8px;
+}
+
+.snail-mantle {
+  left: -5px;
+  bottom: 15px;
+  width: 42px;
+  height: 25px;
+  border-radius: 58% 42% 52% 48%;
+  background: linear-gradient(180deg, rgba(150, 163, 128, 0.98), rgba(97, 111, 84, 0.98));
+  box-shadow: inset -5px -4px 9px rgba(78, 93, 67, 0.2);
+}
+
+.snail-foot {
+  left: 3px;
+  right: 0;
+  bottom: -4px;
+  height: 18px;
+  border-radius: 18px 20px 12px 12px;
+  background: linear-gradient(180deg, rgba(143, 157, 121, 0.96), rgba(104, 119, 87, 0.99));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  animation: snailFootWave 7.8s ease-in-out infinite;
+}
+
+.snail-foot__ripple {
+  position: absolute;
+  bottom: 5px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(228, 237, 218, 0.28);
+  animation: footRipple 6.2s linear infinite;
+}
+
+.snail-foot__ripple--a {
+  left: 18px;
+  width: 34px;
+}
+
+.snail-foot__ripple--b {
+  left: 62px;
+  width: 40px;
+  animation-delay: -2.9s;
+}
+
+.snail-head {
+  right: calc(2px - 4px * (1 - var(--snail-head-scale)));
+  bottom: calc(28px + 11px * var(--snail-head-scale));
+  width: calc(42px * var(--snail-head-scale));
+  height: calc(24px * var(--snail-head-scale));
+  border-radius: 20px 18px 15px 12px;
+  overflow: visible;
+  background: linear-gradient(180deg, rgba(149, 162, 125, 0.99), rgba(104, 118, 86, 1));
+  box-shadow: inset -5px -3px 8px rgba(72, 87, 61, 0.18);
+  animation: snailHeadProbe 9.6s ease-in-out infinite;
+}
+
+.snail-lip {
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  width: 9px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(233, 238, 227, 0.16);
+}
+
+.snail-mouth {
+  position: absolute;
+  right: 7px;
+  bottom: 5px;
+  width: 10px;
+  height: 5px;
+  border-bottom: 2px solid rgba(81, 93, 69, 0.54);
+  border-radius: 0 0 10px 10px;
+}
+
+.snail-breathing-pore {
+  position: absolute;
+  left: 78px;
+  bottom: 46px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(90, 105, 76, 0.3);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+  animation: mantlePulse 7.4s ease-in-out infinite;
+}
+
+.snail-eye {
+  top: 0;
+  width: calc(4px + 1px * var(--snail-antenna-scale));
+  height: calc(26px * var(--snail-antenna-scale));
+  background: linear-gradient(180deg, rgba(128, 141, 108, 0.98), rgba(84, 97, 70, 0.98));
+}
+
+.snail-eye::after {
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle at 38% 38%, rgba(255, 255, 255, 0.2), rgba(61, 72, 54, 1) 50%);
+}
+
+.snail-eye--left {
+  right: 26px;
+  animation: eyestalkLeftSearch 9.2s ease-in-out infinite;
+}
+
+.snail-eye--right {
+  right: 12px;
+  animation: eyestalkRightSearch 9.2s ease-in-out infinite;
+}
+
+.snail-tentacle {
+  width: 15px;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(131, 144, 110, 0.98), rgba(90, 103, 75, 0.94));
+}
+
+.snail-tentacle--low-left {
+  right: 30px;
+  bottom: 40px;
+  animation: lowTentacleTasteLeft 8.4s ease-in-out infinite;
+}
+
+.snail-tentacle--low-right {
+  right: 16px;
+  bottom: 36px;
+  animation: lowTentacleTasteRight 8.4s ease-in-out infinite -1.8s;
+}
+
+.snail-figure--scene {
+  animation: snailSceneDriftRealistic var(--snail-drift-duration) cubic-bezier(0.45, 0.06, 0.2, 0.98) infinite;
+}
+
+.snail-figure--scene .snail-figure__inner {
+  transform: translateY(calc(7px * (1 - var(--snail-growth-scale)))) scale(var(--snail-growth-scale));
+}
+
+.snail-figure--selected {
+  filter: drop-shadow(0 22px 30px rgba(40, 63, 45, 0.24));
+}
+
+.snail-figure--selected .snail-trail-sheen {
+  opacity: calc(var(--snail-trail-opacity) * 0.96);
+}
+
+.snail-figure--action-feed .snail-head,
+.snail-figure--pose-glide .snail-head {
+  animation: headFeedReach 5.6s ease-in-out infinite;
+}
+
+.snail-figure--action-feed .snail-mouth {
+  animation: mouthNibble 0.9s ease-in-out infinite;
+}
+
+.snail-figure--action-feed .snail-foot {
+  animation: footFeedCreep 5.8s ease-in-out infinite;
+}
+
+.snail-figure--action-touch .snail-figure__inner {
+  animation: snailStartleWithdraw 1.45s cubic-bezier(0.35, 0, 0.22, 1) 1;
+}
+
+.snail-figure--action-touch .snail-body {
+  animation: snailBodyCinch 1.35s ease-in-out 1;
+}
+
+.snail-figure--action-touch .snail-foot {
+  animation: footCinch 1.25s ease-in-out 1;
+}
+
+.snail-figure--action-touch .snail-mouth {
+  opacity: 0;
+}
+
+.snail-figure--action-touch .snail-breathing-pore {
+  animation-duration: 2.1s;
+}
+
+.snail-figure--action-touch .snail-eye--left,
+.snail-figure--action-touch .snail-eye--right {
+  animation: eyestalkRetract 1.4s ease-in-out 1;
+}
+
+.snail-figure--action-touch .snail-tentacle--low-left,
+.snail-figure--action-touch .snail-tentacle--low-right {
+  animation: tentacleRetract 1.2s ease-in-out 1;
+}
+
+.snail-figure--breeding .snail-hitbox {
+  display: none;
+}
+
+@keyframes snailSceneDriftRealistic {
+  0%, 100% {
+    transform: translateX(-50%) scaleX(var(--snail-flip)) rotate(var(--snail-scene-rotation));
+  }
+  18% {
+    transform: translateX(calc(-50% + (var(--snail-drift-x) * 0.12))) translateY(calc(var(--snail-drift-y) * -0.08)) scaleX(var(--snail-flip)) rotate(calc(var(--snail-scene-rotation) + 0.25deg));
+  }
+  52% {
+    transform: translateX(calc(-50% + (var(--snail-drift-x) * 0.74))) translateY(calc(var(--snail-drift-y) * -0.4)) scaleX(var(--snail-flip)) rotate(calc(var(--snail-scene-rotation) - 0.45deg));
+  }
+  76% {
+    transform: translateX(calc(-50% + var(--snail-drift-x))) translateY(calc(var(--snail-drift-y) * -0.92)) scaleX(var(--snail-flip)) rotate(calc(var(--snail-scene-rotation) - 0.8deg));
+  }
+}
+
+@keyframes snailWeightShift {
+  0%, 100% { transform: translateY(calc(7px * (1 - var(--snail-growth-scale)))) scale(var(--snail-growth-scale)); }
+  32% { transform: translateY(calc(6px * (1 - var(--snail-growth-scale)) - 0.6px)) scale(calc(var(--snail-growth-scale) * 1.002)); }
+  64% { transform: translateY(calc(8px * (1 - var(--snail-growth-scale)) + 0.5px)) scale(calc(var(--snail-growth-scale) * 0.998)); }
+}
+
+@keyframes shellBreathe {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  35% { transform: rotate(-0.85deg) translateY(-0.4px); }
+  68% { transform: rotate(0.45deg) translateY(0.25px); }
+}
+
+@keyframes snailBodyFlow {
+  0%, 100% { transform: translateY(0) scaleY(1) scaleX(1); }
+  28% { transform: translateY(-0.4px) scaleY(1.018) scaleX(0.996); }
+  62% { transform: translateY(0.3px) scaleY(0.994) scaleX(1.008); }
+}
+
+@keyframes snailFootWave {
+  0%, 100% { transform: scaleX(1) translateX(0); }
+  30% { transform: scaleX(1.018) translateX(0.6px); }
+  64% { transform: scaleX(0.996) translateX(1.4px); }
+}
+
+@keyframes snailHeadProbe {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  22% { transform: translateX(1px) translateY(-0.2px) rotate(0.4deg); }
+  54% { transform: translateX(3px) translateY(-0.8px) rotate(1deg); }
+  72% { transform: translateX(2px) translateY(-0.4px) rotate(0.25deg); }
+}
+
+@keyframes eyestalkLeftSearch {
+  0%, 100% { transform: rotate(-18deg) scaleY(1); }
+  34% { transform: rotate(-9deg) scaleY(1.03); }
+  60% { transform: rotate(-2deg) scaleY(1.08); }
+  82% { transform: rotate(-14deg) scaleY(0.98); }
+}
+
+@keyframes eyestalkRightSearch {
+  0%, 100% { transform: rotate(9deg) scaleY(1); }
+  26% { transform: rotate(18deg) scaleY(1.02); }
+  58% { transform: rotate(24deg) scaleY(1.08); }
+  84% { transform: rotate(12deg) scaleY(0.98); }
+}
+
+@keyframes lowTentacleTasteLeft {
+  0%, 100% { opacity: 0.84; transform: rotate(-16deg); }
+  40% { opacity: 1; transform: rotate(-3deg) translateX(2px); }
+  72% { opacity: 0.88; transform: rotate(-12deg) translateX(1px); }
+}
+
+@keyframes lowTentacleTasteRight {
+  0%, 100% { opacity: 0.84; transform: rotate(8deg); }
+  38% { opacity: 1; transform: rotate(16deg) translateX(2px); }
+  74% { opacity: 0.88; transform: rotate(9deg) translateX(1px); }
+}
+
+@keyframes trailShimmer {
+  0%, 100% { opacity: calc(var(--snail-trail-opacity) * 0.56); transform: scaleX(0.94); }
+  50% { opacity: calc(var(--snail-trail-opacity) * 0.92); transform: scaleX(1.08) translateX(4px); }
+}
+
+@keyframes mantlePulse {
+  0%, 100% { transform: scale(1); opacity: 0.24; }
+  50% { transform: scale(1.16); opacity: 0.38; }
+}
+
+@keyframes footRipple {
+  0% { opacity: 0.12; transform: translateX(0) scaleX(0.72); }
+  45% { opacity: 0.34; transform: translateX(10px) scaleX(1); }
+  100% { opacity: 0.06; transform: translateX(20px) scaleX(1.12); }
+}
+
+@keyframes headFeedReach {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  35% { transform: translateX(3px) translateY(-0.4px) rotate(0.8deg); }
+  68% { transform: translateX(5px) translateY(-0.8px) rotate(1.4deg); }
+}
+
+@keyframes mouthNibble {
+  0%, 100% { transform: scaleX(1); opacity: 0.9; }
+  50% { transform: scaleX(0.62); opacity: 0.56; }
+}
+
+@keyframes footFeedCreep {
+  0%, 100% { transform: scaleX(1) translateX(0); }
+  44% { transform: scaleX(1.02) translateX(2px); }
+  72% { transform: scaleX(1.04) translateX(3px); }
+}
+
+@keyframes snailStartleWithdraw {
+  0% { transform: translateY(calc(7px * (1 - var(--snail-growth-scale)))) scale(var(--snail-growth-scale)); }
+  28% { transform: translateY(calc(7px * (1 - var(--snail-growth-scale)) + 1px)) scale(calc(var(--snail-growth-scale) * 0.97)) translateX(-5px); }
+  54% { transform: translateY(calc(7px * (1 - var(--snail-growth-scale)) + 0.5px)) scale(calc(var(--snail-growth-scale) * 0.95)) translateX(-7px); }
+  100% { transform: translateY(calc(7px * (1 - var(--snail-growth-scale)))) scale(var(--snail-growth-scale)); }
+}
+
+@keyframes snailBodyCinch {
+  0%, 100% { transform: translateY(0) scaleX(1) scaleY(1); }
+  42% { transform: translateY(1px) scaleX(0.94) scaleY(0.92); }
+}
+
+@keyframes footCinch {
+  0%, 100% { transform: scaleX(1); }
+  42% { transform: scaleX(0.84); }
+}
+
+@keyframes tentacleRetract {
+  0%, 100% { opacity: 0.9; transform: translateX(0) rotate(-12deg); }
+  45% { opacity: 0.48; transform: translateX(-6px) rotate(-28deg); }
+}
+
 @keyframes snailSceneDrift {
   0%, 100% {
     transform: translateX(-50%) scaleX(var(--snail-flip)) rotate(var(--snail-scene-rotation));
@@ -2907,6 +3565,14 @@ img {
   .support-grid {
     grid-template-columns: 1fr;
   }
+
+  .terrarium-topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .terrarium-chipbar {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 820px) {
@@ -2914,9 +3580,25 @@ img {
     min-height: 420px;
   }
 
+  .breed-selects {
+    grid-template-columns: 1fr;
+  }
+
   .snail-figure {
     width: 146px;
     height: 86px;
+  }
+
+  .snail-hitbox {
+    left: 8px;
+    right: 2px;
+    bottom: 8px;
+    height: 66px;
+  }
+
+  .snail-trail-sheen {
+    left: 68px;
+    width: 78px;
   }
 
   .snail-shell {
@@ -2939,6 +3621,10 @@ img {
     grid-template-columns: 1fr;
   }
 
+  .terrarium-switcher--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .snail-strip {
     grid-auto-columns: minmax(180px, 1fr);
   }
@@ -2947,6 +3633,18 @@ img {
 @media (max-width: 560px) {
   .app-shell--quiet {
     width: min(100% - 16px, 720px);
+  }
+
+  .terrarium-panel--focused {
+    padding: 14px;
+  }
+
+  .terrarium-switcher--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .terrarium-chipbar {
+    gap: 6px;
   }
 
   .terrarium-panel--simple,
@@ -2964,13 +3662,41 @@ img {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .action-dock--minimal {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .terrarium-scene--shared {
     min-height: 360px;
+  }
+
+  .scene-caption--minimal {
+    left: 12px;
+    bottom: 12px;
+    max-width: calc(100% - 24px);
+  }
+
+  .egg-chip {
+    grid-template-columns: 14px minmax(0, 1fr) auto;
+    padding: 10px 12px;
   }
 
   .snail-figure {
     width: 122px;
     height: 74px;
+  }
+
+  .snail-hitbox {
+    left: 6px;
+    right: 1px;
+    bottom: 7px;
+    height: 56px;
+  }
+
+  .snail-trail-sheen {
+    left: 56px;
+    width: 64px;
+    height: 9px;
   }
 
   .snail-figure__badge {
