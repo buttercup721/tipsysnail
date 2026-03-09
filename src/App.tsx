@@ -74,7 +74,7 @@ type SaleQuote = {
 type InteractionMode = 'observe' | 'breed' | 'sell';
 
 const CURRENT_SAVE_VERSION = 8;
-const defaultStatusMessage = '달팽이를 눌러 반응을 보거나, 먹이 점을 원하는 자리에 놓아 주세요.';
+const defaultStatusMessage = '달팽이를 눌러 살펴보거나, 먹이 점을 편하게 내려놓아 보세요.';
 const fallbackTerrarium = starterTerrariums[0]!;
 const motionTickMs = 120;
 const clockTickMs = 1000;
@@ -134,10 +134,12 @@ function formatSavedAt(timestamp: number): string {
 
 function createMotionSeed(snailId: string, index: number): SnailMotion {
   const seed = hashString(snailId) + (index + 1) * 97;
-  const x = 12 + (seed * 37) % 76;
-  const y = 16 + (seed * 53) % 66;
-  const targetX = clamp(x + ((seed % 19) - 9), 8, 92);
-  const targetY = clamp(y + (((seed * 3) % 17) - 8), 12, 88);
+  const orbit = ((index % 6) / 6) * Math.PI * 2 + (seed % 31) * 0.04;
+  const radius = 22 + (seed % 18);
+  const x = clamp(50 + Math.cos(orbit) * radius, 12, 88);
+  const y = clamp(48 + Math.sin(orbit) * (radius * 0.72), 16, 84);
+  const targetX = clamp(x + Math.cos(orbit + 0.9) * 12, 8, 92);
+  const targetY = clamp(y + Math.sin(orbit + 0.7) * 10, 12, 88);
 
   return {
     x,
@@ -145,8 +147,8 @@ function createMotionSeed(snailId: string, index: number): SnailMotion {
     targetX,
     targetY,
     heading: seed % 360,
-    speed: 0.18,
-    nextDecisionAt: Date.now() + 1500 + (seed % 2200),
+    speed: 0.085 + (seed % 12) * 0.004,
+    nextDecisionAt: Date.now() + 1800 + (seed % 2800),
     reaction: 'idle',
     reactionUntil: 0
   };
@@ -160,14 +162,23 @@ function syncMotionMap(previous: Record<string, SnailMotion>, snails: OwnedSnail
 
 function pickWanderTarget(currentX: number, currentY: number): Pick<SnailMotion, 'targetX' | 'targetY' | 'nextDecisionAt'> {
   return {
-    targetX: clamp(currentX + (Math.random() - 0.5) * 26, 8, 92),
-    targetY: clamp(currentY + (Math.random() - 0.5) * 22, 12, 88),
-    nextDecisionAt: Date.now() + 2200 + Math.round(Math.random() * 4200)
+    targetX: clamp(currentX + (Math.random() - 0.5) * 22, 8, 92),
+    targetY: clamp(currentY + (Math.random() - 0.5) * 18, 12, 88),
+    nextDecisionAt: Date.now() + 2600 + Math.round(Math.random() * 4800)
   };
 }
 
 function getMotionHeading(fromX: number, fromY: number, toX: number, toY: number): number {
   return Math.atan2(toY - fromY, toX - fromX) * (180 / Math.PI) + 90;
+}
+
+function normalizeAngle(angle: number): number {
+  return ((angle % 360) + 360) % 360;
+}
+
+function interpolateAngle(current: number, target: number, factor: number): number {
+  const delta = ((target - current + 540) % 360) - 180;
+  return normalizeAngle(current + delta * factor);
 }
 
 function sanitizeFoodInventory(candidate: unknown): FoodInventory {
@@ -428,7 +439,7 @@ function TerrariumSnail({
   onSelect
 }: TerrariumSnailProps) {
   const rarity = getSpeciesRarityLabel(snail.speciesId);
-  const scale = 0.64 + growth.scale * 0.56;
+  const scale = 0.58 + growth.scale * 0.52;
   const actorStyle = {
     left: `${motion.x}%`,
     top: `${motion.y}%`,
@@ -442,7 +453,13 @@ function TerrariumSnail({
     ['--body-length' as string]: String(growth.bodyLength),
     ['--body-height' as string]: String(growth.bodyHeight),
     ['--antenna-scale' as string]: String(growth.antennaScale),
-    ['--activity-speed' as string]: `${Math.max(3.4, 7 - motion.speed * 10)}s`
+    ['--activity-speed' as string]: `${Math.max(4.1, 8.4 - motion.speed * 17)}s`,
+    ['--glide-speed' as string]: `${Math.max(2.8, 5.4 - motion.speed * 12)}s`,
+    ['--trail-length' as string]: String(0.9 + growth.trailOpacity * 0.9),
+    ['--wet-gloss' as string]: String(0.22 + growth.shellGloss * 0.32),
+    ['--body-stretch' as string]: String(1 + motion.speed * 1.5),
+    ['--feelers-sway' as string]: `${Math.max(2.2, 4.8 - motion.speed * 9)}s`,
+    ['--pattern-shift' as string]: `${(hashString(snail.id) % 11) * 3.5}deg`
   } satisfies CSSProperties;
 
   return (
@@ -471,12 +488,17 @@ function TerrariumSnail({
         {selectionOrder > 0 ? <span className="snail-select-order">{selectionOrder}</span> : null}
         <span className="snail-shell">
           <span className="snail-shell__rim" />
+          <span className="snail-shell__bands" />
           <span className="snail-shell__spiral" />
+          <span className="snail-shell__core" />
           <span className="snail-shell__shine" />
         </span>
         <span className="snail-body">
           <span className="snail-body__tail" />
+          <span className="snail-body__foot" />
           <span className="snail-body__torso" />
+          <span className="snail-body__mantle" />
+          <span className="snail-body__texture" />
           <span className="snail-body__head" />
           <span className="snail-body__mouth" />
           <span className="snail-body__feelers snail-body__feelers--left" />
@@ -532,9 +554,9 @@ function App() {
   const modeLabel = activeFoodType
     ? `${foodCatalog[activeFoodType].label} 점 놓기`
     : interactionMode === 'breed'
-      ? '교배할 두 마리를 차례로 눌러 주세요.'
+      ? '교배할 두 마리 선택'
       : interactionMode === 'sell'
-        ? '판매할 달팽이를 눌러 주세요.'
+        ? '판매할 달팽이 선택'
         : gameState.statusMessage;
 
   useEffect(() => {
@@ -663,33 +685,41 @@ function App() {
         Object.assign(motion, pickWanderTarget(motion.x, motion.y));
       }
 
-      let speed = growth.stage === 'adult'
-        ? 0.14
+      const baseSpeed = growth.stage === 'adult'
+        ? 0.07
         : growth.stage === 'subadult'
-          ? 0.16
+          ? 0.078
           : growth.stage === 'juvenile'
-            ? 0.18
-            : 0.2;
+            ? 0.086
+            : 0.094;
 
+      let desiredSpeed = baseSpeed;
       if (targetDrop) {
-        speed += 0.12;
+        desiredSpeed += 0.055;
       }
 
-      if (motion.reaction === 'touch' || motion.reaction === 'breed') {
-        speed *= 0.45;
+      if (motion.reaction === 'touch') {
+        desiredSpeed *= 0.42;
       }
+
+      if (motion.reaction === 'breed') {
+        desiredSpeed *= 0.34;
+      }
+
+      motion.speed += (desiredSpeed - motion.speed) * (targetDrop ? 0.18 : 0.12);
 
       const gap = distance(motion.x, motion.y, motion.targetX, motion.targetY);
       if (gap > 0.08) {
-        const step = Math.min(gap, speed);
-        motion.x += ((motion.targetX - motion.x) / gap) * step;
-        motion.y += ((motion.targetY - motion.y) / gap) * step;
-        motion.heading = getMotionHeading(motion.x, motion.y, motion.targetX, motion.targetY);
+        const step = Math.min(gap, motion.speed);
+        const nextX = motion.x + ((motion.targetX - motion.x) / gap) * step;
+        const nextY = motion.y + ((motion.targetY - motion.y) / gap) * step;
+        const desiredHeading = getMotionHeading(motion.x, motion.y, motion.targetX, motion.targetY);
+        motion.heading = interpolateAngle(motion.heading, desiredHeading, targetDrop ? 0.17 : 0.11);
+        motion.x = nextX;
+        motion.y = nextY;
       }
 
-      motion.speed = speed;
-
-      if (targetDrop && !consumedDrops.has(targetDrop.id) && distance(motion.x, motion.y, targetDrop.x, targetDrop.y) < 2.3) {
+      if (targetDrop && !consumedDrops.has(targetDrop.id) && distance(motion.x, motion.y, targetDrop.x, targetDrop.y) < 2.2) {
         consumedDrops.set(targetDrop.id, {
           snailId: snail.id,
           type: targetDrop.type,
@@ -697,9 +727,32 @@ function App() {
         });
         motion.reaction = 'eat';
         motion.reactionUntil = currentTime + eatingReactionMs;
-        motion.nextDecisionAt = currentTime + eatingReactionMs;
+        motion.nextDecisionAt = currentTime + eatingReactionMs + 900;
       } else if (motion.reaction !== 'touch' && motion.reaction !== 'breed' && motion.reaction !== 'eat') {
         motion.reaction = targetDrop ? 'seek' : 'idle';
+      }
+    }
+
+    const motionEntries = Object.entries(nextMotionMap);
+    for (let leftIndex = 0; leftIndex < motionEntries.length; leftIndex += 1) {
+      const [leftId, left] = motionEntries[leftIndex]!;
+      for (let rightIndex = leftIndex + 1; rightIndex < motionEntries.length; rightIndex += 1) {
+        const [rightId, right] = motionEntries[rightIndex]!;
+        if (breedingIds.has(leftId) && breedingIds.has(rightId)) {
+          continue;
+        }
+
+        const gap = distance(left.x, left.y, right.x, right.y);
+        const minimumGap = 7.4;
+        if (gap > 0.01 && gap < minimumGap) {
+          const push = (minimumGap - gap) * 0.085;
+          const pushX = ((left.x - right.x) / gap) * push;
+          const pushY = ((left.y - right.y) / gap) * push;
+          left.x = clamp(left.x + pushX, 8, 92);
+          left.y = clamp(left.y + pushY, 12, 88);
+          right.x = clamp(right.x - pushX, 8, 92);
+          right.y = clamp(right.y - pushY, 12, 88);
+        }
       }
     }
 
@@ -930,7 +983,7 @@ function App() {
 
   const handleToggleSellMode = (): void => {
     if (interactionMode === 'sell') {
-      resetModes('교배 선택을 닫았어요.');
+      resetModes('판매 선택을 닫았어요.');
       return;
     }
 
@@ -1076,6 +1129,10 @@ function App() {
     <div className={`koi-shell koi-shell--${selectedTerrarium.id}`}>
       <main className={`terrarium-stage terrarium-stage--${selectedTerrarium.id} ${activeFoodType ? 'is-feed-mode' : ''}`} onClick={handleTerrariumClick}>
         <div className="terrarium-fog" />
+        <div className="terrarium-caustics terrarium-caustics--one" />
+        <div className="terrarium-caustics terrarium-caustics--two" />
+        <div className="terrarium-glass-noise" />
+        <div className="terrarium-vignette" />
         <div className="terrarium-shine" />
         <div className="terrarium-rim terrarium-rim--top" />
         <div className="terrarium-rim terrarium-rim--bottom" />
